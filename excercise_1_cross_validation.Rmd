@@ -1,0 +1,234 @@
+---
+title: "Exercise_1_KNN"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gmodels)
+library(class)
+library(caret)
+library(swirl)
+```
+
+## Exercise 1 – Data preparation and
+KNN
+
+
+```{r}
+load("data/id100.Rda")
+
+
+get_img <- function(df, sample_no){
+  # get matrix of number from dataset
+  # df-dataset; sample_no - which sample to return the matrix
+  img <- data.matrix(df[sample_no,2:235])
+  matrix(img, nrow = 18, ncol = 18, byrow = FALSE)
+}
+
+# visualize image
+image(get_img(id,3), col = gray(0:100/100))
+```
+
+``` {r df variant knn}
+
+load("data/id100.Rda")
+set.seed(423)
+
+# shuffle dataset
+rows <- sample(nrow(id))
+shuffled_df <- id[rows,]
+
+# split 50/50 for training and testing data
+test_df <- shuffled_df[1:200,]
+train_df <- shuffled_df[201:400,]
+
+id_train_labels <- train_df[,1]
+id_test_labels <- train_df[,1]
+
+
+
+numbers_test_pred <- knn(train = train_df, test = test_df,
+cl = id_train_labels, k=21)
+
+```
+```{r}
+
+CrossTable(x = id_test_labels, y = numbers_test_pred,
+prop.chisq=FALSE)
+```
+```{r}
+folds <- createFolds(id$X1, k = 10)
+
+lapply(folds,function(x){
+     holdout <- rep(FALSE,nrow(id))
+     holdout[x] <- TRUE
+     table(holdout,id$X1)
+})
+```
+
+# TRY DIFFERENT K VALUES - calculate average from 10 tries of each K value, each time shuffling the data
+``` {r try different ks}
+ accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+
+load("data/id100.Rda")
+set.seed(423)
+
+k_accuracy_avg_vec <- c()
+k_error_avg_vec <- c()
+ks <- c(1, 5, 9, 15, 19, 25, 29)
+# ks <- 1:40
+
+for (k_now in ks ){
+  #print(paste0("k_now = ", k_now))
+  k_error <- 0
+  k_error_avg <- 0
+  
+  k_accuracy <- 0
+  k_accuracy_avg <- 0
+  
+  for (i in 1:10) {
+    # shuffle dataset
+    shuffled_df <- id[sample(nrow(id)),]
+    
+    # split 10/90 for training and testing data
+    test_df <- shuffled_df[1:200,]  # shuffled_df[1:360,]
+    train_df <- shuffled_df[201:400,] # shuffled_df[361:400,]
+    
+    # get the labels - supervision part
+    id_train_labels <- train_df[,1]
+    id_test_labels <- test_df[,1]
+    
+    # get the prediction
+    numbers_test_pred <- knn(train = train_df, test = test_df,
+    cl = id_train_labels, k=k_now)
+
+    # create table to calculate accuracy
+    tab <- table(numbers_test_pred,id_test_labels)
+    accuracy_now <- accuracy(tab)
+    #print(paste0("i=",i ,"  accuracy_now=", accuracy_now))
+    
+    k_error <- mean(id_test_labels != numbers_test_pred)
+    k_accuracy <- k_accuracy + accuracy_now
+  }
+  # get summary of one k
+  k_accuracy_avg <- k_accuracy / 10
+  k_accuracy_avg_vec <- c(k_accuracy_avg_vec, k_accuracy_avg)
+  
+  k_error_avg <- k_error / 10
+  k_error_avg_vec <- c(k_error_avg_vec, k_error_avg)
+  
+  print(paste0("k_now = ", k_now, "  k_accuracy_avg = ", k_accuracy_avg, " k_error_avg = ", k_error_avg ))
+}
+plot(ks, k_accuracy_avg_vec, type="o", ylab="accuracy")
+plot(ks, k_error_avg_vec, type="o", ylab="misclassification error")
+```
+# Using cross-validation to find best k
+``` {r cross validation}
+# help https://genomicsclass.github.io/book/pages/crossvalidation.html - seems like for every fold check all the ks
+library(class)
+library(caret)
+load("data/id100.Rda")
+
+# shuffle dataset
+shuffled_df <- id[sample(nrow(id)),]
+
+# for every fold check all the ks
+#ks <- c(1,5,9,13,17,21,25,29)
+#ks <- c(1, 35, 71)
+#ks <- 1:40
+ks <- c(15)
+
+mse_k_v <- c()  # mse per one k
+for (k in ks){
+  # do the folds
+  folds <- createFolds(shuffled_df$X1, k = 10)
+  
+  mse_kf <- 0 # mean squared error for all the folds for this k 
+  
+  for (fold in folds){
+    #current fold - to ignore in training data but to use as a validation dataset: fold -> test!
+    df_fold <- shuffled_df[ fold , ]
+    
+    # use not-fold data as training and fold data as test
+    not_f_df <- shuffled_df[ -fold , ]
+    f_df <- shuffled_df[ fold,  ]
+    
+    # get labels 
+    f_train_labels <- not_f_df[,1]
+    f_test_labels <- f_df[,1]
+    
+    # predict with knn
+    f_test_pred <- knn(train = not_f_df[,c(2:325)], test = f_df[,c(2:325)], cl = f_train_labels, k=k)
+    
+    # calculate error
+    f_error <- mean(f_test_labels != f_test_pred)
+    print(paste0("      k =", k, " f_error =", f_error))
+    mse_kf <- mse_kf + f_error
+  }
+  print(paste0("k = ", k, " mse_kf = ", mse_kf))
+  mse_k_v <- c(mse_k_v, mse_kf/10)
+}
+print(paste0("mse_k_v = ", mse_k_v))
+plot(ks, mse_k_v, type="o", ylab="missclassification error")
+
+```
+It seems like the loops should be inverted, so thats why we want to do this:
+
+Error? Why the plots look like they look? Is there a mistake with shuffling or sth like that? It says that no matter what k we are using, the error rates are extremely low.
+``` {r inverted loops}
+# help https://genomicsclass.github.io/book/pages/crossvalidation.html - seems like for every fold check all the ks
+library(class)
+library(caret)
+load("data/id100.Rda")
+
+# shuffle dataset
+set.seed(423)
+shuffled_df <- id[sample(nrow(id)),]
+
+# for every fold check all the ks
+ks <- c(1,5,9,13,17,21,25,29)
+mse_k_all_folds_avg <- rep(0, length(ks)) # vector for storing error of each k 
+
+# do the folds
+folds <- createFolds(shuffled_df$X1, k = 10)
+
+fold_no <- 0 # just for printing the progress
+
+#current fold - to ignore in training data but to use as a validation dataset: fold -> test!
+for (fold in folds){
+  fold_no <- fold_no + 1
+  print(paste0("fold_no =", fold_no))
+  
+  fold <- sample(fold) # shuffle id numbers of fold 
+  
+  # use not-fold data as training and fold data as test
+  not_f_df <- shuffled_df[ -fold, ]
+  f_df <- shuffled_df[ fold, ]
+  
+  # get labels 
+  f_train_labels <- not_f_df[,1]
+  f_test_labels <- f_df[,1]
+  
+  # predict with knn - test all k's for each fold
+
+  k_no <- 0 # just to keep track
+  k_error <- 0
+  for (k in ks){
+    k_no <- k_no + 1
+    f_test_pred <- knn(train = not_f_df[,c(2:325)], test = f_df[,c(2:325)], cl = f_train_labels, k=k)
+    
+    k_error <- mean(f_test_labels != f_test_pred) # error of current k in this fold
+    print(paste0("      k =", k, " k_error =", k_error))
+    print( mse_k_all_folds_avg) # Error vector that we want to plot
+    
+    # we just want to plot the results so we came up with idea of saving the errors in vector
+    # for each k in the vector all the folds are summed up together, and then we get the average
+    mse_k_all_folds_avg[k_no] <- mse_k_all_folds_avg[k_no] + k_error
+  }
+}
+mse_k_all_folds_avg <- mse_k_all_folds_avg / length(folds)
+
+print(paste0("mse_k_all_folds_avg = ", mse_k_all_folds_avg))
+plot(ks, mse_k_all_folds_avg, type="o", ylab="missclassification error", main="each k had checked the folds")
+```

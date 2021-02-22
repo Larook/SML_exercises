@@ -1,0 +1,363 @@
+---
+title: "Exercise_1_KNN"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gmodels)
+library(class)
+library(caret)
+library(swirl)
+```
+
+# 1.3 Performing K-nearest neighbor ( Report 1 ) Group 4
+
+
+## 1.3.1 K-Nearest Neighbour:
+Using the methods learned in the Chapter 3 in “Machine Learning WithR”, KNN can now be performed on our own generated dataset. First we will test on a single person. Remember to split between training and test set (split in two equally sized parts). Document the results. Can you explain the performance (computation time and test accuracy) on the training and test-set?
+
+``` {r one person}
+
+ accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+
+load("data/id100.Rda")
+set.seed(423)
+
+k_error_avg_vec <- c()
+timing_now_avg_vec <- c()
+ks <- c( 19)
+
+for (k_now in ks ){
+  #print(paste0("k_now = ", k_now))
+  k_error <- 0
+  k_error_avg <- 0
+  
+  timing_now_avg <- 0
+  for (i in 1:10) {
+    # shuffle dataset
+    shuffled_df <- id[sample(nrow(id)),]
+    
+    # split 10/90 for training and testing data
+    test_df <- shuffled_df[1:200,]  # shuffled_df[1:360,]
+    train_df <- shuffled_df[201:400,] # shuffled_df[361:400,]
+    
+    # get the labels - supervision part
+    id_train_labels <- train_df[,1]
+    id_test_labels <- test_df[,1]
+    
+    # check the time
+    t_start <- Sys.time()
+    # get the prediction
+    numbers_test_pred <- knn(train = train_df[,c(2:325)], test = test_df[,c(2:325)], cl = id_train_labels, k=k_now)
+    timing_now <- (Sys.time() - t_start ) * 1000 #ms
+    
+    k_error <- k_error +mean(id_test_labels != numbers_test_pred)
+    timing_now_avg <- timing_now_avg + timing_now
+
+  }
+  # get summary of one k
+  k_error_avg <- k_error / 10
+  k_error_avg_vec <- c(k_error_avg_vec, k_error_avg)
+  
+  timing_now_avg <- timing_now_avg / 10
+  timing_now_avg_vec <- c(timing_now_avg_vec, timing_now_avg) 
+  
+  print(paste0("k_now = ", k_now, " k_error_avg = ", k_error_avg, " timing_now_avg=", timing_now_avg ))
+}
+plot(ks, k_error_avg_vec, type="o", ylab="misclassification error")
+plot(ks, timing_now_avg_vec, type="o", ylab="average execution time [ms]")
+
+```
+
+
+
+## 1.3.2 Performance of varying K: 
+Analyse performance with varying K.
+``` {r analyse performacne var k}
+
+ accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+
+load("data/id100.Rda")
+set.seed(423)
+
+k_error_avg_vec <- c()
+timing_now_avg_vec <- c()
+ks <- c(1, 5, 9, 15, 19, 25, 29)
+# ks <- 1:40
+
+for (k_now in ks ){
+  #print(paste0("k_now = ", k_now))
+  k_error <- 0
+  k_error_avg <- 0
+  
+  timing_now_avg <- 0
+  for (i in 1:10) {
+    # shuffle dataset
+    shuffled_df <- id[sample(nrow(id)),]
+    
+    # split 10/90 for training and testing data
+    test_df <- shuffled_df[1:200,]  # shuffled_df[1:360,]
+    train_df <- shuffled_df[201:400,] # shuffled_df[361:400,]
+    
+    # get the labels - supervision part
+    id_train_labels <- train_df[,1]
+    id_test_labels <- test_df[,1]
+    
+    # check the time
+    t_start <- Sys.time()
+    # get the prediction
+    numbers_test_pred <- knn(train = train_df[,c(2:325)], test = test_df[,c(2:325)], cl = id_train_labels, k=k_now)
+    timing_now <- (Sys.time() - t_start ) * 1000 #ms
+    
+    k_error <- k_error +mean(id_test_labels != numbers_test_pred)
+    timing_now_avg <- timing_now_avg + timing_now
+
+  }
+  # get summary of one k
+  k_error_avg <- k_error / 10
+  k_error_avg_vec <- c(k_error_avg_vec, k_error_avg)
+  
+  timing_now_avg <- timing_now_avg / 10
+  timing_now_avg_vec <- c(timing_now_avg_vec, timing_now_avg) 
+  
+  print(paste0("k_now = ", k_now, " k_error_avg = ", k_error_avg, " timing_now_avg=", timing_now_avg ))
+}
+plot(ks, k_error_avg_vec, type="o", ylab="misclassification error")
+plot(ks, timing_now_avg_vec, type="o", ylab="average execution time [ms]")
+```
+
+
+
+
+## 1.3.3 Cross validation: 
+Perform a cross validation with a 90% / 10% split with 10 runs. Report mean and standard deviation of the performance.
+
+``` {r cross validation}
+# help https://genomicsclass.github.io/book/pages/crossvalidation.html - seems like for every fold check all the ks
+library(class)
+library(caret)
+load("data/id100.Rda")
+
+# shuffle dataset
+set.seed(423)
+shuffled_df <- id[sample(nrow(id)),]
+
+# for every fold check all the ks
+ks <- c(1,5,9,13,17,21,25,29)
+mse_k_all_folds_avg <- rep(0, length(ks)) # vector for storing error of each k 
+
+# do the folds
+folds <- createFolds(shuffled_df$X1, k = 10)
+
+fold_no <- 0 # just for printing the progress
+
+#current fold - to ignore in training data but to use as a validation dataset: fold -> test!
+for (fold in folds){
+  fold_no <- fold_no + 1
+  print(paste0("fold_no =", fold_no))
+  
+  fold <- sample(fold) # shuffle id numbers of fold 
+  
+  # use not-fold data as training and fold data as test
+  not_f_df <- shuffled_df[ -fold, ]
+  f_df <- shuffled_df[ fold, ]
+  
+  # get labels 
+  f_train_labels <- not_f_df[,1]
+  f_test_labels <- f_df[,1]
+  
+  # predict with knn - test all k's for each fold
+
+  k_no <- 0 # just to keep track
+  k_error <- 0
+  for (k in ks){
+    k_no <- k_no + 1
+    f_test_pred <- knn(train = not_f_df[,c(2:325)], test = f_df[,c(2:325)], cl = f_train_labels, k=k)
+    
+    k_error <- mean(f_test_labels != f_test_pred) # error of current k in this fold
+    print(paste0("      k =", k, " k_error =", k_error))
+    print( mse_k_all_folds_avg) # Error vector that we want to plot
+    
+    # we just want to plot the results so we came up with idea of saving the errors in vector
+    # for each k in the vector all the folds are summed up together, and then we get the average
+    mse_k_all_folds_avg[k_no] <- mse_k_all_folds_avg[k_no] + k_error
+  }
+}
+mse_k_all_folds_avg <- mse_k_all_folds_avg / length(folds)
+
+print(paste0("mse_k_all_folds_avg = ", mse_k_all_folds_avg))
+plot(ks, mse_k_all_folds_avg, type="o", ylab="missclassification error", main="each k had checked the folds")
+
+```
+
+
+
+
+
+
+## 1.3.4 Person independent KNN: 
+Now try to apply k-nearest neighbor classification to the complete
+data set from all students attending the course. Distinguish two cases: Having data from all individuals in the training set and splitting the data according to individuals. Generate and explain the results.
+
+``` {r p_indep}
+
+# CASE A
+load("data/idList-co-100.Rdata")
+id <- do.call(rbind, idList[1:10])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+
+# id - huge dataframe with everyone as TRAINING
+train_df <- id
+id_train_labels <- train_df[,1]
+
+person_error_v <- c()
+# individually test sets for each person
+for (person_df in idList){
+  print("new_person")
+  test_df <- person_df
+  id_test_labels <- person_df[,1]
+  
+  # get the prediction
+  numbers_test_pred <- knn(train = train_df[,c(2:325)], test = test_df[,c(2:325)], cl = id_train_labels, k=15)
+  
+  person_error <- mean(id_test_labels != numbers_test_pred)
+  person_error_v <- c(person_error_v, person_error)
+} 
+
+#print(paste0("dim(person_error_v) = ", dim(person_error_v)))
+plot(1:length(idList), person_error_v, type="o", ylab="misclassification error", xlab="person number", main="case A")
+
+
+# CASE B
+person_error_v <- c()
+for (person_df in idList){
+  # use individually data for training and testing
+  shuffled_df <- person_df[sample(nrow(person_df)),]
+  
+  test_df <- shuffled_df[1:200,]
+  train_df <- shuffled_df[201: 400,]
+  
+  id_test_labels <- test_df[,1]
+  id_train_labels <- train_df[,1]
+  
+  # get the prediction
+  numbers_test_pred <- knn(train = train_df[,c(2:325)], test = test_df[,c(2:325)], cl = id_train_labels, k=30)
+  
+  person_error <- mean(id_test_labels != numbers_test_pred)
+  person_error_v <- c(person_error_v, person_error)
+  
+}
+
+plot(1:length(idList), person_error_v, type="o", ylab="misclassification error", xlab="person number", main="case B")
+
+```
+
+
+
+## 1.3.5 Performance of sample size: 
+Lastly report computational time of the prediction step for
+varying ‘k’ and using a small and large datasets. You don’t have to test every ‘k’ simply give anoverview. Discuss how the accuracy changes with different sizes of the dataset, is ‘k’ dependent on the
+dataset size?
+
+``` {r performance big sample}
+load("data/idList-co-100.Rdata")
+id <- do.call(rbind, idList[1:10])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+set.seed(423)
+
+k_error_avg_vec <- c()
+timing_now_avg_vec <- c()
+ks <- c(1, 5, 9, 15, 19, 25, 29)
+# ks <- 1:40
+
+# Case A - smaller dataset
+for (k_now in ks ){
+  #print(paste0("k_now = ", k_now))
+  k_error <- 0
+  k_error_avg <- 0
+  
+  timing_now_avg <- 0
+  for (i in 1:10) {
+    # shuffle dataset
+    shuffled_df <- id[sample(nrow(id)),]
+    
+    # split for training and testing data
+    #test_df <- shuffled_df[1:20000,]  # shuffled_df[1:360,]
+    #train_df <- shuffled_df[20001:40000,] # shuffled_df[361:400,]
+    
+    # try to decrease the sample size so it can be run
+    test_df <- shuffled_df[1:300,]  # shuffled_df[1:360,]
+    train_df <- shuffled_df[301:600,] # shuffled_df[361:400,]
+    
+    # get the labels - supervision part
+    id_train_labels <- train_df[,1]
+    id_test_labels <- test_df[,1]
+    
+    # check the time
+    t_start <- Sys.time()
+    # get the prediction
+    numbers_test_pred <- knn(train = train_df[,c(2:325)], test = test_df[,c(2:325)], cl = id_train_labels, k=k_now)
+    timing_now <- (Sys.time() - t_start ) * 1000 #ms
+    
+    k_error <- k_error +mean(id_test_labels != numbers_test_pred)
+    timing_now_avg <- timing_now_avg + timing_now
+
+  }
+  # get summary of one k
+  k_error_avg <- k_error / 10
+  k_error_avg_vec <- c(k_error_avg_vec, k_error_avg)
+  
+  timing_now_avg <- timing_now_avg / 10
+  timing_now_avg_vec <- c(timing_now_avg_vec, timing_now_avg) 
+  
+  print(paste0("k_now = ", k_now, " k_error_avg = ", k_error_avg, " timing_now_avg=", timing_now_avg ))
+}
+plot(ks, k_error_avg_vec, type="o", ylab="misclassification error", main="300 training 300 testing")
+plot(ks, timing_now_avg_vec, type="o", ylab="average execution time [ms]", main="300 training 300 testing")
+
+# Case B - bigger dataset
+k_error_avg_vec <- c()
+timing_now_avg_vec <- c()
+for (k_now in ks ){
+  #print(paste0("k_now = ", k_now))
+  k_error <- 0
+  k_error_avg <- 0
+  
+  timing_now_avg <- 0
+  for (i in 1:10) {
+    # shuffle dataset
+    shuffled_df <- id[sample(nrow(id)),]
+    
+    # split for training and testing data
+    test_df <- shuffled_df[1:500,]  # shuffled_df[1:360,]
+    train_df <- shuffled_df[501:1000,] # shuffled_df[361:400,]
+    
+    # get the labels - supervision part
+    id_train_labels <- train_df[,1]
+    id_test_labels <- test_df[,1]
+    
+    # check the time
+    t_start <- Sys.time()
+    # get the prediction
+    numbers_test_pred <- knn(train = train_df[,c(2:325)], test = test_df[,c(2:325)], cl = id_train_labels, k=k_now)
+    timing_now <- (Sys.time() - t_start ) * 1000 #ms
+    
+    k_error <- k_error +mean(id_test_labels != numbers_test_pred)
+    timing_now_avg <- timing_now_avg + timing_now
+
+  }
+  # get summary of one k
+  k_error_avg <- k_error / 10
+  k_error_avg_vec <- c(k_error_avg_vec, k_error_avg)
+  
+  timing_now_avg <- timing_now_avg / 10
+  timing_now_avg_vec <- c(timing_now_avg_vec, timing_now_avg) 
+  
+  print(paste0("k_now = ", k_now, " k_error_avg = ", k_error_avg, " timing_now_avg=", timing_now_avg ))
+}
+plot(ks, k_error_avg_vec, type="o", ylab="misclassification error", main="500 training 500 testing")
+plot(ks, timing_now_avg_vec, type="o", ylab="average execution time [ms]", main="500 training 500 testing")
+```

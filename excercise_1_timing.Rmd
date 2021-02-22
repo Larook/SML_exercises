@@ -1,0 +1,112 @@
+---
+title: "Timing"
+output: pdf_document
+---
+
+
+``` {r try different ks for small dataset}
+ accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+
+load("data/id100.Rda")
+set.seed(423)
+
+k_error_avg_vec <- c()
+timing_now_avg_vec <- c()
+ks <- c(1, 5, 9, 15, 19, 25, 29)
+# ks <- 1:40
+
+for (k_now in ks ){
+  #print(paste0("k_now = ", k_now))
+  k_error <- 0
+  k_error_avg <- 0
+  
+  timing_now_avg <- 0
+  for (i in 1:10) {
+    # shuffle dataset
+    shuffled_df <- id[sample(nrow(id)),]
+    
+    # split 10/90 for training and testing data
+    test_df <- shuffled_df[1:200,]  # shuffled_df[1:360,]
+    train_df <- shuffled_df[201:400,] # shuffled_df[361:400,]
+    
+    # get the labels - supervision part
+    id_train_labels <- train_df[,1]
+    id_test_labels <- test_df[,1]
+    
+    # check the time
+    t_start <- Sys.time()
+    # get the prediction
+    numbers_test_pred <- knn(train = train_df, test = test_df, cl = id_train_labels, k=k_now)
+    timing_now <- (Sys.time() - t_start ) * 1000 #ms
+    
+    k_error <- k_error +mean(id_test_labels != numbers_test_pred)
+    timing_now_avg <- timing_now_avg + timing_now
+
+  }
+  # get summary of one k
+  k_error_avg <- k_error / 10
+  k_error_avg_vec <- c(k_error_avg_vec, k_error_avg)
+  
+  timing_now_avg <- timing_now_avg / 10
+  timing_now_avg_vec <- c(timing_now_avg_vec, timing_now_avg) 
+  
+  print(paste0("k_now = ", k_now, " k_error_avg = ", k_error_avg, " timing_now_avg=", timing_now_avg ))
+}
+plot(ks, k_error_avg_vec, type="o", ylab="misclassification error")
+plot(ks, timing_now_avg_vec, type="o", ylab="average execution time [ms]")
+```
+
+
+Now try big dataset
+``` {r try different ks for big dataset}
+load("data/idList-co-100.Rdata")
+id <- do.call(rbind, idList[1:10])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+set.seed(423)
+
+k_error_avg_vec <- c()
+timing_now_avg_vec <- c()
+ks <- c(1, 5, 9, 15, 19, 25, 29)
+# ks <- 1:40
+
+for (k_now in ks ){
+  #print(paste0("k_now = ", k_now))
+  k_error <- 0
+  k_error_avg <- 0
+  
+  timing_now_avg <- 0
+  for (i in 1:10) {
+    # shuffle dataset
+    shuffled_df <- id[sample(nrow(id)),]
+    
+    # split for training and testing data
+    test_df <- shuffled_df[1:20000,]  # shuffled_df[1:360,]
+    train_df <- shuffled_df[20001:40000,] # shuffled_df[361:400,]
+    
+    # get the labels - supervision part
+    id_train_labels <- train_df[,1]
+    id_test_labels <- test_df[,1]
+    
+    # check the time
+    t_start <- Sys.time()
+    # get the prediction
+    numbers_test_pred <- knn(train = train_df, test = test_df, cl = id_train_labels, k=k_now)
+    timing_now <- (Sys.time() - t_start ) * 1000 #ms
+    
+    k_error <- k_error +mean(id_test_labels != numbers_test_pred)
+    timing_now_avg <- timing_now_avg + timing_now
+
+  }
+  # get summary of one k
+  k_error_avg <- k_error / 10
+  k_error_avg_vec <- c(k_error_avg_vec, k_error_avg)
+  
+  timing_now_avg <- timing_now_avg / 10
+  timing_now_avg_vec <- c(timing_now_avg_vec, timing_now_avg) 
+  
+  print(paste0("k_now = ", k_now, " k_error_avg = ", k_error_avg, " timing_now_avg=", timing_now_avg ))
+}
+#plot(ks, k_error_avg_vec, type="o", ylab="misclassification error")
+plot(ks, timing_now_avg_vec, type="o", ylab="average execution time [ms]")
+```

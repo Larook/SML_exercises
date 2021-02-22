@@ -1,0 +1,360 @@
+---
+title: "Exercise_1_KNN"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gmodels)
+library(class)
+library(caret)
+library(swirl)
+```
+
+## Exercise 1 – Data preparation and
+KNN
+```{r test}
+apple <- c('red', 'green', "yellow")
+print(class(apple))
+
+```
+
+
+```{r}
+load("data/id100.Rda")
+
+
+get_img <- function(df, sample_no){
+  # get matrix of number from dataset
+  # df-dataset; sample_no - which sample to return the matrix
+  img <- data.matrix(df[sample_no,2:235])
+  matrix(img, nrow = 18, ncol = 18, byrow = FALSE)
+}
+
+# visualize image
+image(get_img(id,3), col = gray(0:100/100))
+```
+## get another df full of images?
+Should we have dataset full of imgs? - for sure then easy to shuffle
+we will have to compute the distances - easier when having an image
+
+``` {r}
+# get list of matrices with images
+numbers_list <- list()
+for ( i in 1:400){
+  num_mat <- get_img(id,i)
+  numbers_list[[(length(numbers_list) + 1)]] <- num_mat # append list
+}
+
+```
+
+```{r list variant}
+# shuffle list
+shuffled_list <- sample(numbers_list)
+```
+
+Verify shuffling of the list
+```{r}
+image(numbers_list[[1]], col = gray(0:100/100))
+
+image(shuffled_list[[1]], col = gray(0:100/100))
+```
+Split to training set and testing set 50/50
+```{r}
+
+
+```
+
+
+END HERE
+``` {r df variant}
+
+load("data/id100.Rda")
+set.seed(423)
+
+# shuffle dataset
+rows <- sample(nrow(id))
+shuffled_df <- id[rows,]
+
+# split 50/50 for training and testing data
+test_df <- shuffled_df[1:200,]
+train_df <- shuffled_df[201:400,]
+
+id_train_labels <- train_df[,1]
+id_test_labels <- train_df[,1]
+
+numbers_test_pred <- knn(train = train_df, test = test_df,
+cl = id_train_labels, k=21)
+
+```
+```{r}
+
+CrossTable(x = id_test_labels, y = numbers_test_pred,
+prop.chisq=FALSE)
+```
+```{r}
+folds <- createFolds(id$X1, k = 10)
+
+lapply(folds,function(x){
+     holdout <- rep(FALSE,nrow(id))
+     holdout[x] <- TRUE
+     table(holdout,id$X1)
+})
+```
+
+# WORKING PLOT HERE
+# TRY DIFFERENT K VALUES - calculate average from 10 tries of each K value, each time shuffling the data
+``` {r try different ks}
+ accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+
+load("data/id100.Rda")
+set.seed(423)
+
+k_accuracy_avg_vec <- c()
+k_error_avg_vec <- c()
+ks <- c(1, 5, 9, 15, 19, 25, 29)
+# ks <- 1:40
+
+for (k_now in ks ){
+  #print(paste0("k_now = ", k_now))
+  k_error <- 0
+  k_error_avg <- 0
+  
+  k_accuracy <- 0
+  k_accuracy_avg <- 0
+  
+  for (i in 1:10) {
+    # shuffle dataset
+    shuffled_df <- id[sample(nrow(id)),]
+    
+    # split 10/90 for training and testing data
+    test_df <- shuffled_df[1:200,]  # shuffled_df[1:360,]
+    train_df <- shuffled_df[201:400,] # shuffled_df[361:400,]
+    
+    # get the labels - supervision part
+    id_train_labels <- train_df[,1]
+    id_test_labels <- test_df[,1]
+    
+    # get the prediction
+    numbers_test_pred <- knn(train = train_df, test = test_df,
+    cl = id_train_labels, k=k_now)
+
+    # create table to calculate accuracy
+    tab <- table(numbers_test_pred,id_test_labels)
+    accuracy_now <- accuracy(tab)
+    #print(paste0("i=",i ,"  accuracy_now=", accuracy_now))
+    
+    k_error <- mean(id_test_labels != numbers_test_pred)
+    k_accuracy <- k_accuracy + accuracy_now
+  }
+  # get summary of one k
+  k_accuracy_avg <- k_accuracy / 10
+  k_accuracy_avg_vec <- c(k_accuracy_avg_vec, k_accuracy_avg)
+  
+  k_error_avg <- k_error / 10
+  k_error_avg_vec <- c(k_error_avg_vec, k_error_avg)
+  
+  print(paste0("k_now = ", k_now, "  k_accuracy_avg = ", k_accuracy_avg, " k_error_avg = ", k_error_avg ))
+}
+plot(ks, k_accuracy_avg_vec, type="o", ylab="accuracy")
+plot(ks, k_error_avg_vec, type="o", ylab="misclassification error")
+```
+``` {r trying intro from https://genomicsclass.github.io/book/pages/crossvalidation.html }
+
+# shuffle dataset
+shuffled_df <- id[sample(nrow(id)),]
+
+# split 10/90 for training and testing data
+test_df <- shuffled_df[1:200,]  # shuffled_df[1:360,]
+train_df <- shuffled_df[201:400,] # shuffled_df[361:400,]
+
+# get the labels - supervision part
+id_train_labels <- train_df[,1]
+id_test_labels <- test_df[,1]
+
+# get the prediction
+numbers_test_pred <- knn(train = train_df, test = test_df,cl = id_train_labels, k=9)
+
+error <- mean(id_train_labels != numbers_test_pred)
+print(paste0("error = ", error))
+
+
+# now try to do the folds
+folds <- createFolds(id$X1, k = 2)  # idx
+#folds <- createFolds(id, k = 10)  # idx online they use not the labels but full dataset
+print(sapply(folds, length))  # each fold has 400 samples
+
+
+#rbind()
+
+for (fold in folds){
+  print("fold")
+  df_fold <- shuffled_df[ fold , ]
+  print(dim(df_fold))
+  print(dim(shuffled_df))
+  
+  # test_df is always from the fold
+  # train_df is the all the other folds
+  
+  df_not_fold <- shuffled_df - df_fold
+  print(dim(df_not_fold))
+
+  
+  f_train_df <-df_fold[1:360,]  # 90% training
+  f_test_df <-df_fold[361:400,]  # 10% test
+  
+  f_train_labels <- f_train_df[,1]
+  f_test_labels <- f_test_df[,1]
+  
+  # but shouldnt we use data that doesnt contain the current fold???
+  f_test_pred <- knn(train = f_train_df, test = f_test_df,
+    cl = f_train_labels, k=100)
+  
+  f_error <- mean(f_test_labels != f_test_pred)
+  print(paste0("f_error = ", f_error))
+  
+  
+}
+#testing <- id[ folds[[1]] , ]
+
+```
+
+``` {r Ines}
+library(class)
+library(caret)
+
+# shuffle dataset
+shuffled_df <- id[sample(nrow(id)),]
+
+# split 10/90 for training and testing data
+test_df <- shuffled_df[1:200,]  # shuffled_df[1:360,]
+train_df <- shuffled_df[201:400,] # shuffled_df[361:400,]
+
+# get the labels - supervision part
+id_train_labels <- train_df[,1]
+id_test_labels <- test_df[,1]
+
+# get the prediction
+numbers_test_pred <- knn(train = train_df, test = test_df,cl = id_train_labels, k=9)
+
+error <- mean(id_train_labels != numbers_test_pred)
+print(paste0("error = ", error))
+
+
+# now try to do the folds
+folds <- createFolds(id$X1, k = 2)  # idx
+#folds <- createFolds(id, k = 10)  # idx online they use not the labels but full dataset
+print(sapply(folds, length))  # each fold has 400 samples
+
+for (fold in folds){
+  print("fold")
+  df_fold <- shuffled_df[ fold , ]
+  #print(df_fold)
+  
+  f_train_df <-df_fold[1:360,]  # 90% training
+  f_test_df <-df_fold[361:400,]  # 10% test
+  
+#current fold = fold to ignore in training data but to use as validation dataset
+#other folds = training data 
+  
+  f_train_labels <- f_train_df[,1]
+  f_test_labels <- f_test_df[,1]
+  not_f_df_labels <- not_f_df[, 1]
+  
+  # but shouldnt we use data that doesnt contain the current fold???
+  not_f_df <- f_train_df[ -fold , ]
+  f_df <- f_test_df[ fold,  ]
+  
+  f_test_pred <- knn(train = not_f_df, test = f_df, cl = not_f_df[, 1], k=21)
+  
+  f_error <- mean(f_test_labels != f_test_pred)
+  print(paste0("f_error = ", f_error))
+  
+}
+
+```
+
+
+
+``` {r}
+# y - labels
+y <- id_train_labels
+X <- train_df
+# knn(train =  X, test = X, cl=y, k=5)
+
+idx <- createFolds(y, k=10)
+sapply(idx, length)
+
+the_labels <- knn(train =  X, test = X, cl=y, k=5)
+
+#1st fold of data
+#shuffled_df[folds[1]]
+```
+
+# USE K-FOLDS to find best K
+``` {r https://genomicsclass.github.io/book/pages/crossvalidation.html}
+load("data/id100.Rda")
+set.seed(423)
+
+ks <- 1:12  # set k from 1 to 12
+res <- sapply(ks, function(k) { # apply a function to a whole dataset
+  ##try out each version of k from 1 to 12
+  res.k <- sapply(seq_along(idx), function(i) {
+    ##loop over each of the 10 cross-validation folds
+    ##predict the held-out samples using k nearest neighbors
+    pred <- knn(train=Xsmall[ -idx[[i]], ],
+                test=Xsmall[ idx[[i]], ],
+                cl=y[ -idx[[i]] ], k = k)
+    ##the ratio of misclassified samples
+    mean(y[ idx[[i]] ] != pred)
+  })
+  ##average over the 10 folds
+  mean(res.k)
+})
+
+
+```
+
+
+``` {r Erick's code}
+library(class)
+nor <-function(x) { (x -min(x))/(max(x)-min(x))   }
+#load("id100.Rda")
+id_norm <- as.data.frame(lapply(id[,c(2:325)], nor))
+ran <- sample(1:nrow(id), 0.5 * nrow(id)) 
+id_train <- id_norm[ran,]
+id_test <- id_norm[-ran,]
+id_target_category <- id[ran,1]
+id_test_category <- id[-ran,1]
+library(class)
+pr <- knn(id_train,id_test,cl=id_target_category,k=1)
+tab <- table(pr,id_test_category)
+accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+accuracy(tab)
+nor <-function(x) { (x -min(x))/(max(x)-min(x))   }
+#THIS SHOULD WORK : 
+#load("id100.Rda")
+ran <- sample(1:nrow(id), 0.5 * nrow(id)) 
+
+id_train <- id_norm[ran,]
+id_test <- id_norm[-ran,]
+id_target_category <- id[ran,1]
+id_test_category <- id[-ran,1]
+
+pr <- knn(id_train,id_test,cl=id_target_category,k=1)
+tab <- table(pr,id_test_category)
+accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+accuracy(tab)
+```
+Higher K lower precision
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
