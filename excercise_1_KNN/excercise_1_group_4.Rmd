@@ -11,17 +11,17 @@ library(caret)
 library(swirl)
 ```
 
-# 1.3 Performing K-nearest neighbor ( Report 1 ) Group 4
+# 1.4 Performing K-nearest neighbor ( Report 1 ) Group 4
+In this report, we perform the k-nearest neighbour algorithm to classify handwritten digits data. We analyse the performance of the algorithm changing the sample size, subject dependencies and most importantly the parameter K - minimal number of closest neighbours needed to properly classify the sample.  
 
-
-## 1.3.1 K-Nearest Neighbour:
+## 1.4.1 K-Nearest Neighbour:
 Using the methods learned in the Chapter 3 in “Machine Learning WithR”, KNN can now be performed on our own generated dataset. First we will test on a single person. Remember to split between training and test set (split in two equally sized parts). Document the results. Can you explain the performance (computation time and test accuracy) on the training and test-set?
 
 ``` {r one person}
 
  accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
 
-load("data/id100.Rda")
+load("../data/id100.Rda")
 set.seed(423)
 
 k_error_avg_vec <- c()
@@ -65,20 +65,24 @@ for (k_now in ks ){
   
   print(paste0("k_now = ", k_now, " k_error_avg = ", k_error_avg, " timing_now_avg=", timing_now_avg ))
 }
-plot(ks, k_error_avg_vec, type="o", ylab="misclassification error")
-plot(ks, timing_now_avg_vec, type="o", ylab="average execution time [ms]")
+#plot(ks, k_error_avg_vec, type="o", ylab="misclassification error")
+#plot(ks, timing_now_avg_vec, type="o", ylab="average execution time [ms]")
 
 ```
+As we can see, we achieved the predicted labels from the supervised learning of the KNN algorithm.
+Since the prediction was calculated with a single k = 19,  we ran the algorithm 10 times in order to be able to get average results. From this, we can see that on average classifying all the unknown data took 22 ms with an average error of 0.061.  
+
+But to actually compare the method's performance we should investigate how the performance changes with different parameters - in the case of a KNN algorithm we will be changing K’s.
 
 
 
-## 1.3.2 Performance of varying K: 
+## 1.4.2 Performance of varying K: 
 Analyse performance with varying K.
 ``` {r analyse performacne var k}
 
  accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
 
-load("data/id100.Rda")
+load("../data/id100.Rda")
 set.seed(423)
 
 k_error_avg_vec <- c()
@@ -126,18 +130,18 @@ for (k_now in ks ){
 plot(ks, k_error_avg_vec, type="o", ylab="misclassification error")
 plot(ks, timing_now_avg_vec, type="o", ylab="average execution time [ms]")
 ```
+In order to ensure that the model will accurately predict and generalize the future data, we must choose the appropriate K. To do so, we tested several (odd) values of k on the dataset, through trial and errors.
+ 
+Following the same steps as before, we computed the misclassification error and average execution time for each K and plotted them. As we can see, the larger the value of K, the more the misclassification error rate grows exponentially, with the lowest misclassification error at k = 9, being 0.0075 . And as for the average computational time, values of K between 5 and 25 seem to take more time than values larger than 30. 
 
 
-
-
-## 1.3.3 Cross validation: 
+## 1.4.3 Cross validation: 
 Perform a cross validation with a 90% / 10% split with 10 runs. Report mean and standard deviation of the performance.
 
 ``` {r cross validation}
-# help https://genomicsclass.github.io/book/pages/crossvalidation.html - seems like for every fold check all the ks
 library(class)
 library(caret)
-load("data/id100.Rda")
+load("../data/id100.Rda")
 
 # shuffle dataset
 set.seed(423)
@@ -155,7 +159,7 @@ fold_no <- 0 # just for printing the progress
 #current fold - to ignore in training data but to use as a validation dataset: fold -> test!
 for (fold in folds){
   fold_no <- fold_no + 1
-  print(paste0("fold_no =", fold_no))
+  #print(paste0("fold_no =", fold_no))
   
   fold <- sample(fold) # shuffle id numbers of fold 
   
@@ -176,8 +180,8 @@ for (fold in folds){
     f_test_pred <- knn(train = not_f_df[,c(2:325)], test = f_df[,c(2:325)], cl = f_train_labels, k=k)
     
     k_error <- mean(f_test_labels != f_test_pred) # error of current k in this fold
-    print(paste0("      k =", k, " k_error =", k_error))
-    print( mse_k_all_folds_avg) # Error vector that we want to plot
+    #print(paste0("      k =", k, " k_error =", k_error))
+    #print( mse_k_all_folds_avg) # Error vector that we want to plot
     
     # we just want to plot the results so we came up with idea of saving the errors in vector
     # for each k in the vector all the folds are summed up together, and then we get the average
@@ -186,24 +190,28 @@ for (fold in folds){
 }
 mse_k_all_folds_avg <- mse_k_all_folds_avg / length(folds)
 
-print(paste0("mse_k_all_folds_avg = ", mse_k_all_folds_avg))
+#print(paste0("mse_k_all_folds_avg = ", mse_k_all_folds_avg))
 plot(ks, mse_k_all_folds_avg, type="o", ylab="missclassification error", main="each k had checked the folds")
 
 ```
 
+Cross-validation refers to a set of methods for measuring the performance of a given predictive model on new test data sets. We have a training data set, that is a set of observations with different features, and each observation is associated with a label. Our goal here is to predict the label of any new samples by learning patterns from the training data. With this method we solve the training and test data problem, while still using all the data for testing the accuracy. 
+
+To do so, we split our data into a number of folds. If we have n folds, then the first step will be to train the model using n-1 of the folds and test the accuracy on the one left. We repeat this process n times until each fold has been used as in the test set.
+
+In this exercise, we performed a cross-validation with a 90/10 with 10 runs. This was executed with two loops. An outer loop which splits the data into 10 folds then trains the model on 9 folds at a time, testing the accuracy on the fold left. And an inner loop, in which we test each fold for varying values of Ks as we did in the exercise above. Finally, we computed the misclassification error for each k for all the folds from which we obtained the average. 
+
+While the misclassification error rate continues to show a tendency to grow exponentially with larger values of K’s, we notice a slight difference from the previous exercise: notably,  that k = 5 has now the lowest misclassification error of all the K’s we’ve tried — 0.005. 
 
 
-
-
-
-## 1.3.4 Person independent KNN: 
+## 1.4.4 Person independent KNN: 
 Now try to apply k-nearest neighbor classification to the complete
 data set from all students attending the course. Distinguish two cases: Having data from all individuals in the training set and splitting the data according to individuals. Generate and explain the results.
 
-``` {r p_indep}
+``` {r person independent}
 
 # CASE A
-load("data/idList-co-100.Rdata")
+load("../data/idList-co-100.Rdata")
 id <- do.call(rbind, idList[1:10])
 id <- as.data.frame(id)
 id$V1 <- factor(id$V1)
@@ -220,7 +228,7 @@ for (person_df in idList){
   id_test_labels <- person_df[,1]
   
   # get the prediction
-  numbers_test_pred <- knn(train = train_df[,c(2:325)], test = test_df[,c(2:325)], cl = id_train_labels, k=15)
+  numbers_test_pred <- knn(train = train_df[,c(2:325)], test = test_df[,c(2:325)], cl = id_train_labels, k=5)
   
   person_error <- mean(id_test_labels != numbers_test_pred)
   person_error_v <- c(person_error_v, person_error)
@@ -243,7 +251,7 @@ for (person_df in idList){
   id_train_labels <- train_df[,1]
   
   # get the prediction
-  numbers_test_pred <- knn(train = train_df[,c(2:325)], test = test_df[,c(2:325)], cl = id_train_labels, k=30)
+  numbers_test_pred <- knn(train = train_df[,c(2:325)], test = test_df[,c(2:325)], cl = id_train_labels, k=5)
   
   person_error <- mean(id_test_labels != numbers_test_pred)
   person_error_v <- c(person_error_v, person_error)
@@ -253,8 +261,13 @@ for (person_df in idList){
 plot(1:length(idList), person_error_v, type="o", ylab="misclassification error", xlab="person number", main="case B")
 
 ```
+We could assume that predicting the data would have high accuracy when both the training and test data come from a single person with the same handwriting style. To have a better insight of the KNN classification performance, we conducted person-independent tests with the data obtained from 10 people. That means the handwriting style in the training data and the test data will vary, which means we expect slightly less accurate predictions. (Case A)
 
+To understand how using data of different people for prediction is influencing the performance of classification we compare results of the individual and person-independent digit recognition. (Case B)
 
+Comparing both cases using k=5, we can see that in both cases few people had illegible handwriting - for those people in general KNN had worse accuracy.
+
+What is more interesting is that overall, case B (person-dependent) turned out to have lower accuracy than case A (person-independent). That means that using data from multiple people (person-independent) had a positive outcome. We could understand it in the following way: since every person in the dataset has a similar way to write digits in general, using a diverse training dataset leads to a more general classifying method —which translates into higher error rates in case B rather than case A.
 
 ## 1.3.5 Performance of sample size: 
 Lastly report computational time of the prediction step for
@@ -262,7 +275,7 @@ varying ‘k’ and using a small and large datasets. You don’t have to test e
 dataset size?
 
 ``` {r performance big sample}
-load("data/idList-co-100.Rdata")
+load("../data/idList-co-100.Rdata")
 id <- do.call(rbind, idList[1:10])
 id <- as.data.frame(id)
 id$V1 <- factor(id$V1)
@@ -319,8 +332,8 @@ plot(ks, k_error_avg_vec, type="o", ylab="misclassification error", main="300 tr
 plot(ks, timing_now_avg_vec, type="o", ylab="average execution time [ms]", main="300 training 300 testing")
 
 # Case B - bigger dataset
-k_error_avg_vec <- c()
-timing_now_avg_vec <- c()
+k_error_avg_vec_big <- c()
+timing_now_avg_vec_big <- c()
 for (k_now in ks ){
   #print(paste0("k_now = ", k_now))
   k_error <- 0
@@ -351,13 +364,18 @@ for (k_now in ks ){
   }
   # get summary of one k
   k_error_avg <- k_error / 10
-  k_error_avg_vec <- c(k_error_avg_vec, k_error_avg)
+  k_error_avg_vec_big <- c(k_error_avg_vec_big, k_error_avg)
   
   timing_now_avg <- timing_now_avg / 10
-  timing_now_avg_vec <- c(timing_now_avg_vec, timing_now_avg) 
+  timing_now_avg_vec_big <- c(timing_now_avg_vec_big, timing_now_avg) 
   
   print(paste0("k_now = ", k_now, " k_error_avg = ", k_error_avg, " timing_now_avg=", timing_now_avg ))
 }
-plot(ks, k_error_avg_vec, type="o", ylab="misclassification error", main="500 training 500 testing")
-plot(ks, timing_now_avg_vec, type="o", ylab="average execution time [ms]", main="500 training 500 testing")
+plot(ks, k_error_avg_vec_big, type="o", ylab="misclassification error", main="500 training 500 testing")
+plot(ks, timing_now_avg_vec_big, type="o", ylab="average execution time [ms]", main="500 training 500 testing")
 ```
+During the execution of the KNN algorithm for the person-independent dataset (case A), we could already see that the computational time increases with the increase of the sample size. Here we have compared the average computational time and error for two datasets — a small one with 600 samples and a bigger one with 1000 samples. For each dataset, we divided the training and testing data 50/50 and obtained average results from 10 runs.
+
+As we can see with a larger dataset the KNN algorithm takes significantly more time to classify. The least time it took to classify the small dataset was 38.32526 ms for k=5 and the fastest it went for the big dataset was for k=5,  taking 99.8517 ms. 
+
+Despite the computational time, the average accuracy also changes with the data size. This time with larger sample of data we can observe a decrease of the average error, meaning that with larger datasets, the accuracy increases.
