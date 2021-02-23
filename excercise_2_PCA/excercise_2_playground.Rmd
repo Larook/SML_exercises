@@ -13,7 +13,41 @@ library(swirl)
 
 ## Exercise 2
 
+## Excercise 2.1 Principal Component Analysis (PCA)
+Perform a PCA on the data for the “all persons in” and “disjunct” data set.
+### 2.1.1 Show the standard deviation ( From prcomp Eigenvalues ), the proportion of variance and the cumulative sum of variance of the principal components. (In the report the first 10-20 principal components, should be sufficient to illustrate the tendencies.)
 
+
+``` {r PCA}
+load("../data/id100.Rda")
+set.seed(423)
+shuffled_df <- id[sample(nrow(id)),]
+
+# help https://www.datacamp.com/community/tutorials/pca-analysis-r
+df_pca <- prcomp(shuffled_df[,c(2:235)], center = TRUE,scale. = TRUE)
+pca_sum <- summary(df_pca)
+print(pca_sum)
+
+pca_std_variance <- pca_sum$importance[1,1:20]
+plot(pca_std_variance, main="standard deviation of first 20 PCAs")
+
+pca_proportion_of_variance <- pca_sum$importance[2,1:20]
+plot(pca_proportion_of_variance, main="proportion of variance of first 20 PCAs")
+
+pca_cumulative_proportion <- pca_sum$importance[3,1:20]
+plot(pca_cumulative_proportion, main="cumulative proportion first 20 PCAs")
+
+```
+
+
+
+
+
+
+
+
+
+Leftover from exc 1
 ```{r}
 load("../data/id100.Rda")
 set.seed(423)
