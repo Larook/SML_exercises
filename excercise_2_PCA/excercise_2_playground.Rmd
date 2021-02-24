@@ -27,6 +27,12 @@ print_plots_pca <- function(data){
   
   # Zouchi mentioned using squaring of sdev!!!
   
+  plot(df_pca$sdev, main="df_pca$sdev ")
+  # what does that mean?
+  plot(df_pca$sdev * df_pca$sdev, main="df_pca$sdev pow 2 ")
+  
+  # my previous tries before remarks from Zouchi
+  print(pca_sum$importance[,1:20])
   pca_std_variance <- pca_sum$importance[1,1:20]
   plot(pca_std_variance, main="standard deviation of first 20 PCAs")
   
@@ -35,7 +41,6 @@ print_plots_pca <- function(data){
   
   pca_cumulative_proportion <- pca_sum$importance[3,1:20]
   plot(pca_cumulative_proportion, main="cumulative proportion first 20 PCAs")
-
 }
 
 
@@ -51,22 +56,22 @@ shuffled_df <- id[sample(nrow(id)),]
 print_plots_pca(shuffled_df)
 
 # disjunt data
-id <- idList[[1]]
-shuffled_df <- id[sample(nrow(id)),]
-print_plots_pca(shuffled_df)
+#id <- idList[[1]]
+#shuffled_df <- id[sample(nrow(id)),]
+#print_plots_pca(shuffled_df)
 
 ```
 
 ## 2.1.2 Show the performance of selecting enough principal components to represent 80%, 90%, 95%, 99% of the accumulated variance. For each test vary “k” in kNN, try 3 reasonable values.
 ``` {r performance_knn_with_pca}
-# Zouchi told sth to use prcomp.x if I remember correctly - we really need to read the documentation
+# Zouchi told sth to use prcomp $x if I remember correctly - we really need to read the documentation
 # how to get the data with only few pcas?
 load("../data/id100.Rda")
 shuffled_df <- id[sample(nrow(id)),]
 
 df_pca <- prcomp(id[,c(2:235)], center = TRUE,scale. = TRUE)
 pca_sum <- summary(df_pca)
-print(pca_sum)
+print(pca_sum$x)
 
 accumulated_variance_v <- c(80, 90, 95, 99)
 
@@ -130,6 +135,11 @@ for (k_now in ks ){
 #plot(ks, timing_now_avg_vec, type="o", ylab="average execution time [ms]")
 
 ```
+
+
+# one guy mentioned
+I created a function for making perato plots for pca: https://pastebin.com/KcE7BcNS
+
 
 ``` {r case A}
 #DONT KNOW WHY IT GIVES ERRORS!
