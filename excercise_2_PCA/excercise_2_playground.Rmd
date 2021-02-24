@@ -15,21 +15,39 @@ library(swirl)
 
 ## Excercise 2.1 Principal Component Analysis (PCA)
 Perform a PCA on the data for the “all persons in” and “disjunct” data set.
+
+PCA loading vector - the directions in feature space along which the data vary the most
+PCA scores - projections along these directions
+
+
 ### 2.1.1 Show the standard deviation ( From prcomp Eigenvalues ), the proportion of variance and the cumulative sum of variance of the principal components. (In the report the first 10-20 principal components, should be sufficient to illustrate the tendencies.)
 
 
 ``` {r PCA}
 print_plots_pca <- function(data){
   # help https://www.datacamp.com/community/tutorials/pca-analysis-r
-  df_pca <- prcomp(data[,c(2:235)], center = TRUE,scale. = TRUE)
+  df_pca <- prcomp(x=data[,c(2:235)])
   pca_sum <- summary(df_pca)
   print(pca_sum)
   
   # Zouchi mentioned using squaring of sdev!!!
   
+  #Show the standard deviation ( From prcomp Eigenvalues )
   plot(df_pca$sdev, main="df_pca$sdev ")
   # what does that mean?
-  plot(df_pca$sdev * df_pca$sdev, main="df_pca$sdev pow 2 ")
+  variance = df_pca$sdev^2 # since variance = st.dev^2
+  plot(variance, main="variance of loadings")
+  
+  # proportion of variance
+  prop_of_variance <- df_pca$sdev^2/sum(df_pca$sdev^2)
+  plot(prop_of_variance, main="proportion of varpiance")
+  
+  #cumulative sum of variance of the principal components
+  #fuck it at this point I think using the summary was ok - exactly what he wanted to see - if we don't include code its all he wants
+  df_pca$eig
+  
+  
+  plot(, main="cumulative sum of variance of the principal component")
   
   # my previous tries before remarks from Zouchi
   print(pca_sum$importance[,1:20])
@@ -65,16 +83,65 @@ print_plots_pca(shuffled_df)
 ## 2.1.2 Show the performance of selecting enough principal components to represent 80%, 90%, 95%, 99% of the accumulated variance. For each test vary “k” in kNN, try 3 reasonable values.
 ``` {r performance_knn_with_pca}
 # Zouchi told sth to use prcomp $x if I remember correctly - we really need to read the documentation
-# how to get the data with only few pcas?
+# how to get the data with only few pcs?
+
+# function that prints the image
+get_img <- function(df, sample_no){
+  # get matrix of number from dataset
+  # df-dataset; sample_no - which sample to return the matrix
+  img <- data.matrix(df[sample_no,2:ncol(df)])
+  matrix(img, nrow = 18, ncol = 18, byrow = FALSE)
+}
+
+# function that returns the wanted PCs
+get_pcs_covering_variance <-function(data, searched_variance){
+  pca <- prcomp(data[,c(2:235)], center = TRUE,scale. = TRUE)
+  pca_sum <- summary(pca)
+  
+  i <- 1 # keep track of the principle component number
+  cumul_prop = pca_sum$importance[3, i] # get cumulative proportion of current PC
+  print(paste0("searched_accum_var=",searched_accum_var))
+  print(paste0("i=",i, " Cumulative Proportion=",cumul_prop))
+  while(cumul_prop*100 <  searched_accum_var){
+    i <- i + 1
+    cumul_prop = pca_sum$importance[3, i] # get cumulative proportion of current PC
+    print(paste0("i=",i, " Cumulative Proportion=",cumul_prop))
+  }
+  searched_pcs = pca_sum$importance[, seq(1, i, 1)]
+  print(paste0("To get the ", searched_accum_var, "% variance, wee need first ", i, " principal components"))
+  #print(searched_pcs)
+  df_pca$x[, seq(1, i, 1)]
+}
+
+
+
 load("../data/id100.Rda")
 shuffled_df <- id[sample(nrow(id)),]
 
 df_pca <- prcomp(id[,c(2:235)], center = TRUE,scale. = TRUE)
 pca_sum <- summary(df_pca)
-print(pca_sum$x)
+#print(pca_sum$x)
 
-accumulated_variance_v <- c(80, 90, 95, 99)
+# how to get the components that give us the % of variance?
 
+#accumulated_variance_v <- c(80, 90, 95, 99)
+accumulated_variance_v <- c(80)
+for (searched_accum_var in accumulated_variance_v){
+  wanted_pcs <- get_pcs_covering_variance(id, searched_accum_var)
+  print(wanted_pcs)
+  print(paste0("function returns data with dimensions", dim(wanted_pcs)))
+  # Now the questions is how to understand this data?
+  
+  # let's try and print first pca as image
+  # visualize image
+  image(get_img(wanted_pcs, 1), col = gray(0:100/100)) # looks most probably bad - should in any way resemble any number - either understanding of pc is wrong or getting an image of cipher
+  
+  #try to show any number
+  image(get_img(shuffled_df, 13), col = gray(0:100/100) )
+  
+  #ok it seems like we have to rotate it additionally-there is a code for that I guess in the pdf of exercise
+  #still it seems like the PCs gotten are wrong, but the dimensions seemed okish
+}
 ```
 
 
@@ -85,7 +152,7 @@ accumulated_variance_v <- c(80, 90, 95, 99)
 
 
 
-Leftover from exc 1
+# Below are only leftovers from exc 1
 ```{r}
 load("../data/id100.Rda")
 set.seed(423)
