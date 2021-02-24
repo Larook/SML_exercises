@@ -19,23 +19,56 @@ Perform a PCA on the data for the “all persons in” and “disjunct” data s
 
 
 ``` {r PCA}
-load("../data/id100.Rda")
+print_plots_pca <- function(data){
+  # help https://www.datacamp.com/community/tutorials/pca-analysis-r
+  df_pca <- prcomp(data[,c(2:235)], center = TRUE,scale. = TRUE)
+  pca_sum <- summary(df_pca)
+  print(pca_sum)
+  
+  # Zouchi mentioned using squaring of sdev!!!
+  
+  pca_std_variance <- pca_sum$importance[1,1:20]
+  plot(pca_std_variance, main="standard deviation of first 20 PCAs")
+  
+  pca_proportion_of_variance <- pca_sum$importance[2,1:20]
+  plot(pca_proportion_of_variance, main="proportion of variance of first 20 PCAs")
+  
+  pca_cumulative_proportion <- pca_sum$importance[3,1:20]
+  plot(pca_cumulative_proportion, main="cumulative proportion first 20 PCAs")
+
+}
+
+
+# All persons in
+load("../data/idList-co-100.Rdata")
+id <- do.call(rbind, idList[1:10])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+# id - huge dataframe with everyone as TRAINING
+
 set.seed(423)
 shuffled_df <- id[sample(nrow(id)),]
+print_plots_pca(shuffled_df)
 
-# help https://www.datacamp.com/community/tutorials/pca-analysis-r
-df_pca <- prcomp(shuffled_df[,c(2:235)], center = TRUE,scale. = TRUE)
+# disjunt data
+id <- idList[[1]]
+shuffled_df <- id[sample(nrow(id)),]
+print_plots_pca(shuffled_df)
+
+```
+
+## 2.1.2 Show the performance of selecting enough principal components to represent 80%, 90%, 95%, 99% of the accumulated variance. For each test vary “k” in kNN, try 3 reasonable values.
+``` {r performance_knn_with_pca}
+# Zouchi told sth to use prcomp.x if I remember correctly - we really need to read the documentation
+# how to get the data with only few pcas?
+load("../data/id100.Rda")
+shuffled_df <- id[sample(nrow(id)),]
+
+df_pca <- prcomp(id[,c(2:235)], center = TRUE,scale. = TRUE)
 pca_sum <- summary(df_pca)
 print(pca_sum)
 
-pca_std_variance <- pca_sum$importance[1,1:20]
-plot(pca_std_variance, main="standard deviation of first 20 PCAs")
-
-pca_proportion_of_variance <- pca_sum$importance[2,1:20]
-plot(pca_proportion_of_variance, main="proportion of variance of first 20 PCAs")
-
-pca_cumulative_proportion <- pca_sum$importance[3,1:20]
-plot(pca_cumulative_proportion, main="cumulative proportion first 20 PCAs")
+accumulated_variance_v <- c(80, 90, 95, 99)
 
 ```
 
@@ -95,5 +128,36 @@ for (k_now in ks ){
 }
 #plot(ks, k_error_avg_vec, type="o", ylab="misclassification error")
 #plot(ks, timing_now_avg_vec, type="o", ylab="average execution time [ms]")
+
+```
+
+``` {r case A}
+#DONT KNOW WHY IT GIVES ERRORS!
+
+load("data/idList-co-100.Rdata")
+id <- do.call(rbind, idList[1:10])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+
+# id - huge dataframe with everyone as TRAINING
+train_df <- id
+id_train_labels <- train_df[,1]
+
+person_error_v <- c()
+# individually test sets for each person
+for (person_df in idList){
+  print("new_person")
+  test_df <- person_df
+  id_test_labels <- person_df[,1]
+  
+  # get the prediction
+  numbers_test_pred <- knn(train = train_df[,c(2:325)], test = test_df[,c(2:325)],cl = id_train_labels, k=15)
+  
+  person_error <- mean(id_test_labels != numbers_test_pred)
+  person_error_v <- c(person_error_v, person_error)
+} 
+
+#print(paste0("dim(person_error_v) = ", dim(person_error_v)))
+plot(1:length(idList), person_error_v, type="o", ylab="misclassification error", xlab="person number", main="case A")
 
 ```
