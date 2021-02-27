@@ -26,7 +26,7 @@ PCA scores - projections along these directions
 ``` {r PCA}
 print_plots_pca <- function(data){
   # help https://www.datacamp.com/community/tutorials/pca-analysis-r
-  df_pca <- prcomp(x=data[,c(2:235)], scale = TRUE, center = TRUE)
+  df_pca <- prcomp(x=data[,(2:ncol(data))], scale = TRUE, center = TRUE)
   pca_sum <- summary(df_pca)
   print(pca_sum)
   
@@ -154,13 +154,39 @@ recon_fun = function(comp){
 # run reconstruction for 1:17 alternating components
 #lapply(seq(1,18, by = 2), recon_fun)
 
-one_cipher <- shuffled_df[1:2 ,(2:ncol(shuffled_df))]
-print(dim(one_cipher))
+one_cipher <- shuffled_df[1 ,(2:ncol(shuffled_df))]
+cipher <- data.matrix(one_cipher)
+#cipher <- matrix(as.numeric(unlist(one_cipher)),nrow=nrow(one_cipher))
+
+#id_mat <- data.matrix(one_cipher, rownames.force = NA)
+#rotate <- function(x) t(apply(x, 2, rev))
+  
+  # wants to print only 0-9 digits
+  #rotated <- c(id_mat[-400+id_no*400+1, 2:ncol(id_mat)])
+  
+  # prints digit from id
+  #rotated <- c(id_mat[1, 2:ncol(id_mat)])
+  
+  #rotated <- ((rotated - min(rotated)) / (max(rotated) - min(rotated)))
+
+
+#print(rotated)
+#print(dim(one_cipher))
 #image(get_img_rot(one_cipher, 1), col = gray(0:100/100) )
 
-pca_ob <- prcomp( one_cipher, rank=20 ) #, scale = TRUE, center = TRUE)
-print(summary(pca_ob))
-plot(pca_ob)
+#pca_ob <- prcomp( cipher) #, scale = TRUE, center = TRUE)
+
+id_pca <- df_pca
+cipherNumber <- 1
+Proportion <- 0.5
+trunc <- id_pca$x[cipherNumber,cumsum(Proportion) < 0.99] %*%
+  t(id_pca$rotation[,cumsum(Proportion) < 0.99])
+trunc <- scale(trunc, center = -1 * id_pca$center, scale=FALSE)
+image(trunc)
+
+
+#print(summary(pca_ob))
+#plot(pca_ob)
 
 ```
 
@@ -231,6 +257,7 @@ recovered_imgs <- map_dfr(n_pcs,
 
 ```
 
+
 ``` {r performance_knn_with_pca}
 # Zouchi told sth to use prcomp $x if I remember correctly - we really need to read the documentation
 # how to get the data with only few pcs?
@@ -266,7 +293,7 @@ get_img_rot <- function(dataset, id_no){
 
 # function that returns the wanted PCs
 get_pcs_covering_variance <-function(data, searched_variance){
-  pca <- prcomp(data[,c(2:235)], center = TRUE,scale. = TRUE)
+  pca <- prcomp(data[,(2:ncol(data))], center = TRUE,scale. = TRUE)
   pca_sum <- summary(pca)
   
   i <- 1 # keep track of the principle component number
@@ -281,7 +308,8 @@ get_pcs_covering_variance <-function(data, searched_variance){
   searched_pcs = pca_sum$importance[, seq(1, i, 1)]
   print(paste0("To get the ", searched_accum_var, "% variance, wee need first ", i, " principal components"))
   #print(searched_pcs)
-  df_pca$x[, seq(1, i, 1)]
+  #df_pca$x[, seq(1, i, 1)]
+  df_pca
 }
 
 
@@ -289,7 +317,7 @@ get_pcs_covering_variance <-function(data, searched_variance){
 load("../data/id100.Rda")
 shuffled_df <- id[sample(nrow(id)),]
 
-df_pca <- prcomp(id[,c(2:235)], center = TRUE,scale. = TRUE)
+df_pca <- prcomp(id[,(2:ncol(id))], center = TRUE,scale. = TRUE)
 pca_sum <- summary(df_pca)
 #print(pca_sum$x)
 
@@ -298,17 +326,34 @@ pca_sum <- summary(df_pca)
 #accumulated_variance_v <- c(80, 90, 95, 99)
 accumulated_variance_v <- c(80)
 for (searched_accum_var in accumulated_variance_v){
-  wanted_pcs <- get_pcs_covering_variance(id, searched_accum_var)
+  #wanted_pcs <- get_pcs_covering_variance(id, searched_accum_var)
+  wanted_pcs <- pca <- prcomp(id[,(2:ncol(id))], center = TRUE,scale. = TRUE, tol = (100 - searched_accum_var)/100)
   print(wanted_pcs)
   print(paste0("function returns data with dimensions", dim(wanted_pcs)))
   # Now the questions is how to understand this data?
   
   # let's try and print first pca as image
   # visualize image
-  image(get_img_rot(wanted_pcs, 1), col = gray(0:100/100)) # looks most probably bad - should in any way resemble any number - either understanding of pc is wrong or getting an image of cipher
+  #try to show a number
+  cipherNumber <- 1
   
-  #try to show any number
-  image(get_img_rot(shuffled_df, 1), col = gray(0:100/100) )
+  image(get_img_rot(shuffled_df, cipherNumber), col = gray(0:100/100) )
+  
+  image(get_img_rot(wanted_pcs$x, cipherNumber), col = gray(0:100/100)) # looks most probably bad - should in any way resemble any number - either understanding of pc is wrong or getting an image of cipher
+  
+  id_pca <- wanted_pcs
+  proportion <- summary(id_pca)$importance[3, ]
+  plot(id_pca$rotation[,1])
+  Proportion <- 
+  
+  trunc <- id_pca$x[cipherNumber,] %*%
+    t(id_pca$rotation[,])
+  
+  trunc <- scale(trunc, center = -1 * id_pca$center, scale=FALSE)
+  trunc_img <- matrix(trunc,nrow = 18,ncol = 18, byrow = FALSE)
+  image(trunc_img)
+  
+
   
   
   #ok it seems like we have to rotate it additionally-there is a code for that I guess in the pdf of exercise
