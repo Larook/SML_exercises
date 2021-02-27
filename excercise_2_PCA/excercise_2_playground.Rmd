@@ -91,6 +91,8 @@ get_img <- function(df, sample_no){
   # df-dataset; sample_no - which sample to return the matrix
   img <- data.matrix(df[sample_no,2:ncol(df)])
   matrix(img, nrow = 18, ncol = 18, byrow = FALSE)
+  #rotate <- function(x) t(apply(x, 2, rev))
+  #matrix <- rotate(matrix)
 }
 
 # function that returns the wanted PCs
@@ -143,7 +145,38 @@ for (searched_accum_var in accumulated_variance_v){
   #still it seems like the PCs gotten are wrong, but the dimensions seemed okish
 }
 ```
+``` {r rotations}
 
+get_img <- function(dataset, id_no){
+  # modified code that we got in exercise, put only dataset and id of number
+  id_mat <- data.matrix(dataset, rownames.force = NA)
+  rotate <- function(x) t(apply(x, 2, rev))
+  
+  # wants to print only 0-9 digits
+  #rotated <- c(id_mat[-400+id_no*400+1, 2:ncol(id_mat)])
+  
+  rotated <- c(id_mat[id_no, 2:ncol(id_mat)])
+  
+  rotated <- ((rotated - min(rotated)) / (max(rotated) - min(rotated)))
+  image <- matrix(rotated,nrow = 18,ncol = 18, byrow = FALSE)
+  image <- rotate(image)
+}
+
+id_mat <- data.matrix(id, rownames.force = NA)
+rotate <- function(x) t(apply(x, 2, rev))
+# Show first 10 images
+for(i in 1:10)
+{
+#rotated <- c(id_mat[-400+i*400+1,2:ncol(id_mat)])
+#rotated <- ((rotated - min(rotated)) / (max(rotated) - min(rotated)))
+#image <- matrix(rotated,nrow = 18,ncol = 18, byrow = FALSE)
+#image <- rotate(image)
+
+  
+  image( get_img(id, i), zlim=c(0,1), col=gray(0:100/100) )
+}
+
+```
 
 
 

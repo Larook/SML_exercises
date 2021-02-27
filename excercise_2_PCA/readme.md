@@ -19,7 +19,11 @@ rotation - we can get eigenvectors from columns
 x - value of rotated data. We can use it directly for our training. Data already projected to the new coordinates of principle components. Every row is one sample - one cipher ( one image ). Every column is projection to principle component. 1st column is original dataset projected to the 1st principal component - 2nd column is dataset projected on the 2nd principle component.
 	
 Then he goes to explaining normalization and next steps
-	
+
+
+-> Ok maybe we can visualize PCA with this???
+https://www.r-bloggers.com/2019/10/reconstructing-images-using-pca/
+
 ## Exercise 2.2: Normalization
 min-max normalization and z-standarization - Norbert says we have to do only 1 method!
 also do then knn with 10 fold cross-validation.
