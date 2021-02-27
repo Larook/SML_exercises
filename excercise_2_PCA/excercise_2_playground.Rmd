@@ -26,7 +26,7 @@ PCA scores - projections along these directions
 ``` {r PCA}
 print_plots_pca <- function(data){
   # help https://www.datacamp.com/community/tutorials/pca-analysis-r
-  df_pca <- prcomp(x=data[,c(2:235)])
+  df_pca <- prcomp(x=data[,c(2:235)], scale = TRUE, center = TRUE)
   pca_sum <- summary(df_pca)
   print(pca_sum)
   
@@ -81,9 +81,160 @@ print_plots_pca(shuffled_df)
 ```
 
 ## 2.1.2 Show the performance of selecting enough principal components to represent 80%, 90%, 95%, 99% of the accumulated variance. For each test vary “k” in kNN, try 3 reasonable values.
+
+
+OK HERE WE SHOULD TEST IF WE UNDERSTAND PCA AND CAN VISUALIZE IT
+https://www.r-bloggers.com/2019/10/reconstructing-images-using-pca/
+LETS TRY TO DO "REVERSING THE PCA"
+
+
+``` {r with a mistake - cant take whole df for this code}
+reverse_pca <- function(n_comp = 20, pca_object = img_pca){
+  ## The pca_object is an object created by base R's prcomp() function.
+  
+  ## Multiply the matrix of rotated data by the transpose of the matrix 
+  ## of eigenvalues (i.e. the component loadings) to get back to a 
+  ## matrix of original data values
+  recon <- pca_object$x[, 1:n_comp] %*% t(pca_object$rotation[, 1:n_comp])
+  
+  ## Reverse any scaling and centering that was done by prcomp()
+  
+  if(all(pca_object$scale != FALSE)){
+    ## Rescale by the reciprocal of the scaling factor, i.e. back to
+    ## original range.
+    recon <- scale(recon, center = FALSE, scale = 1/pca_object$scale)
+  }
+  if(all(pca_object$center != FALSE)){
+    ## Remove any mean centering by adding the subtracted mean back in
+    recon <- scale(recon, scale = FALSE, center = -1 * pca_object$center)
+  }
+  
+  ## Make it a data frame that we can easily pivot to long format
+  ## (because that's the format that the excellent imager library wants
+  ## when drawing image plots with ggplot)
+  recon_df <- data.frame(cbind(1:nrow(recon), recon))
+  colnames(recon_df) <- c("x", 1:(ncol(recon_df)-1))
+  ## Return the data to long form 
+  recon_df_long <- recon_df %>%
+    tidyr::pivot_longer(cols = -x, 
+                        names_to = "y", 
+                        values_to = "value") %>%
+    mutate(y = as.numeric(y)) %>%
+    arrange(y) %>%
+    as.data.frame()
+  
+  recon_df_long
+}
+
+img_pca <- df_pca
+
+n_pcs <- c(2:5, 10, 20, 50, 100)
+names(n_pcs) <- paste("First", n_pcs, "Components", sep = "_")
+## map reverse_pca() 
+recovered_imgs <- map_dfr(n_pcs, 
+                          reverse_pca, 
+                          .id = "pcs") %>%
+  mutate(pcs = stringr::str_replace_all(pcs, "_", " "), 
+         pcs = factor(pcs, levels = unique(pcs), ordered = TRUE))
+
+
+```
+
+
+
+different try for reconstruction
+https://www.r-bloggers.com/2020/06/visualizing-principle-components-for-images/
+``` {r}
+# Reconsturction and plotting
+par(mfrow= c(3,3))
+recon_fun = function(comp){
+  recon = pca_model$x[, 1:comp] %*% t(pca_model$rotation[, 1:comp])
+  image(t(apply(recon, 2, rev)), col=grey(seq(0,1,length=256)), main = paste0("Principle Components = ", comp))
+}
+# run reconstruction for 1:17 alternating components
+#lapply(seq(1,18, by = 2), recon_fun)
+
+one_cipher <- shuffled_df[1:2 ,(2:ncol(shuffled_df))]
+print(dim(one_cipher))
+#image(get_img_rot(one_cipher, 1), col = gray(0:100/100) )
+
+pca_ob <- prcomp( one_cipher, rank=20 ) #, scale = TRUE, center = TRUE)
+print(summary(pca_ob))
+plot(pca_ob)
+
+```
+
+
+``` {r reversePca}
+#install.packages("magrittr") when problem with %>%
+#install.packages("dplyr") 
+library(magrittr)
+library(dplyr)
+library(purrr)
+
+reverse_pca <- function(n_comp=1, pca_object=pca_ob){
+  ## The pca_object is an object created by base R's prcomp() function.
+  
+  ## Multiply the matrix of rotated data by the transpose of the matrix 
+  ## of eigenvalues (i.e. the component loadings) to get back to a 
+  ## matrix of original data values
+  recon <- pca_object$x[, 1:n_comp] %*% t(pca_object$rotation[, 1:n_comp])
+  
+  ## Reverse any scaling and centering that was done by prcomp()
+  
+  if(all(pca_object$scale != FALSE)){
+    ## Rescale by the reciprocal of the scaling factor, i.e. back to
+    ## original range.
+    recon <- scale(recon, center = FALSE, scale = 1/pca_object$scale)
+  }
+  if(all(pca_object$center != FALSE)){
+    ## Remove any mean centering by adding the subtracted mean back in
+    recon <- scale(recon, scale = FALSE, center = -1 * pca_object$center)
+  }
+  
+  ## Make it a data frame that we can easily pivot to long format
+  ## (because that's the format that the excellent imager library wants
+  ## when drawing image plots with ggplot)
+  recon_df <- data.frame(cbind(1:nrow(recon), recon))
+  colnames(recon_df) <- c("x", 1:(ncol(recon_df)-1))
+  ## Return the data to long form 
+  recon_df_long <- recon_df %>%
+    tidyr::pivot_longer(cols = -x, 
+                        names_to = "y", 
+                        values_to = "value") %>%
+    mutate(y = as.numeric(y)) %>%
+    arrange(y) %>%
+    as.data.frame()
+  
+  recon_df_long
+}
+
+# TODO: my idea was to take one cipher - do PCA decomposition and then try to reverse and show it
+
+one_cipher <- data.frame(shuffled_df[3921 ,(2:ncol(shuffled_df))])
+image(get_img_rot(one_cipher, 1), col = gray(0:100/100) )
+
+pca_ob <- prcomp( one_cipher ) #, scale = TRUE, center = TRUE)
+#pca_ob <- princomp(shuffled_df[, (2:ncol(shuffled_df))])
+print(pca_ob)
+
+## The sequence of PCA components we want
+n_pcs <- c(2)#:5, 10, 20, 50, 100)
+names(n_pcs) <- paste("First", n_pcs, "Components", sep = "_")
+## map reverse_pca() 
+recovered_imgs <- map_dfr(n_pcs, 
+                          reverse_pca, 
+                          .id = "pcs") %>%
+  mutate(pcs = stringr::str_replace_all(pcs, "_", " "), 
+         pcs = factor(pcs, levels = unique(pcs), ordered = TRUE))
+#reverse_pca()
+
+```
+
 ``` {r performance_knn_with_pca}
 # Zouchi told sth to use prcomp $x if I remember correctly - we really need to read the documentation
 # how to get the data with only few pcs?
+
 
 # function that prints the image
 get_img <- function(df, sample_no){
@@ -94,6 +245,24 @@ get_img <- function(df, sample_no){
   #rotate <- function(x) t(apply(x, 2, rev))
   #matrix <- rotate(matrix)
 }
+
+
+get_img_rot <- function(dataset, id_no){
+  # modified code that we got in exercise, put only dataset and id of number
+  id_mat <- data.matrix(dataset, rownames.force = NA)
+  rotate <- function(x) t(apply(x, 2, rev))
+  
+  # wants to print only 0-9 digits
+  #rotated <- c(id_mat[-400+id_no*400+1, 2:ncol(id_mat)])
+  
+  # prints digit from id
+  rotated <- c(id_mat[id_no, 2:ncol(id_mat)])
+  
+  rotated <- ((rotated - min(rotated)) / (max(rotated) - min(rotated)))
+  image <- matrix(rotated,nrow = 18,ncol = 18, byrow = FALSE)
+  image <- rotate(image)
+}
+
 
 # function that returns the wanted PCs
 get_pcs_covering_variance <-function(data, searched_variance){
@@ -136,18 +305,24 @@ for (searched_accum_var in accumulated_variance_v){
   
   # let's try and print first pca as image
   # visualize image
-  image(get_img(wanted_pcs, 1), col = gray(0:100/100)) # looks most probably bad - should in any way resemble any number - either understanding of pc is wrong or getting an image of cipher
+  image(get_img_rot(wanted_pcs, 1), col = gray(0:100/100)) # looks most probably bad - should in any way resemble any number - either understanding of pc is wrong or getting an image of cipher
   
   #try to show any number
-  image(get_img(shuffled_df, 13), col = gray(0:100/100) )
+  image(get_img_rot(shuffled_df, 1), col = gray(0:100/100) )
+  
   
   #ok it seems like we have to rotate it additionally-there is a code for that I guess in the pdf of exercise
   #still it seems like the PCs gotten are wrong, but the dimensions seemed okish
+  
+  # this might be cool! https://www.r-bloggers.com/2019/10/reconstructing-images-using-pca/
+  names(wanted_pcs)
 }
 ```
+
+Test of functions which rotate and show image - based on pdf with exercise
 ``` {r rotations}
 
-get_img <- function(dataset, id_no){
+get_img_rot <- function(dataset, id_no){
   # modified code that we got in exercise, put only dataset and id of number
   id_mat <- data.matrix(dataset, rownames.force = NA)
   rotate <- function(x) t(apply(x, 2, rev))
@@ -155,6 +330,7 @@ get_img <- function(dataset, id_no){
   # wants to print only 0-9 digits
   #rotated <- c(id_mat[-400+id_no*400+1, 2:ncol(id_mat)])
   
+  # prints digit from id
   rotated <- c(id_mat[id_no, 2:ncol(id_mat)])
   
   rotated <- ((rotated - min(rotated)) / (max(rotated) - min(rotated)))
@@ -167,13 +343,9 @@ rotate <- function(x) t(apply(x, 2, rev))
 # Show first 10 images
 for(i in 1:10)
 {
-#rotated <- c(id_mat[-400+i*400+1,2:ncol(id_mat)])
-#rotated <- ((rotated - min(rotated)) / (max(rotated) - min(rotated)))
-#image <- matrix(rotated,nrow = 18,ncol = 18, byrow = FALSE)
-#image <- rotate(image)
-
-  
-  image( get_img(id, i), zlim=c(0,1), col=gray(0:100/100) )
+  #image( get_img_rot(id, i), zlim=c(0,1), col=gray(0:100/100) ) # show first 10 digits
+  image( get_img_rot(shuffled_df, i), zlim=c(0,1), col=gray(0:100/100) ) # show first 10 shuffeled digits
+  #image( get_img(shuffled_df, i), zlim=c(0,1), col=gray(0:100/100) ) # show first 10 shuffeled digits
 }
 
 ```
