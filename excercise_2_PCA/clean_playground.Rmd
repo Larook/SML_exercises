@@ -12,7 +12,7 @@ library(swirl)
 ```
 
 ## Exercise 2
-
+#official saviour https://github.com/LennartOlsen/pca-digits/blob/master/main.r
 ## Excercise 2.1 Principal Component Analysis (PCA)
 Perform a PCA on the data for the “all persons in” and “disjunct” data set.
 
@@ -64,7 +64,131 @@ print_plots_pca(shuffled_df)
 
 ## 2.1.2 Show the performance of selecting enough principal components to represent 80%, 90%, 95%, 99% of the accumulated variance. For each test vary “k” in kNN, try 3 reasonable values.
 
-found a nice github reop
+``` {r performance_knn_with_pca}
+# Zouchi told sth to use prcomp $x if I remember correctly - we really need to read the documentation
+# how to get the data with only few pcs?
+
+
+# function that prints the image
+get_img <- function(df, sample_no){
+  # get matrix of number from dataset
+  # df-dataset; sample_no - which sample to return the matrix
+  img <- data.matrix(df[sample_no,2:ncol(df)])
+  matrix(img, nrow = 18, ncol = 18, byrow = FALSE)
+  #rotate <- function(x) t(apply(x, 2, rev))
+  #matrix <- rotate(matrix)
+}
+
+rotate <- function(x) t(apply(x, 2, rev))
+
+get_img_rot <- function(dataset, id_no){
+  # modified code that we got in exercise, put only dataset and id of number
+  id_mat <- data.matrix(dataset, rownames.force = NA)
+  # get digit from id
+  rotated <- c(id_mat[id_no, 2:ncol(id_mat)])
+  rotated <- ((rotated - min(rotated)) / (max(rotated) - min(rotated)))
+  image <- matrix(rotated,nrow = 18,ncol = 18, byrow = FALSE)
+  image <- rotate(image)
+}
+
+# get the maximum needed number for getting the searched variance 
+get_pcs_for_accum_variance <-function(data, searched_variance){
+  pca <- prcomp(data[,(2:ncol(data))], center = TRUE,scale. = TRUE)
+  pca_sum <- summary(pca)
+  
+  i <- 1 # keep track of the principle component number
+  cumul_prop = pca_sum$importance[3, i] # get cumulative proportion of current PC
+  print(paste0("searched_accum_var=",searched_accum_var))
+  print(paste0("i=",i, " Cumulative Proportion=",cumul_prop))
+  while(cumul_prop*100 <  searched_accum_var){
+    i <- i + 1
+    cumul_prop = pca_sum$importance[3, i] # get cumulative proportion of current PC
+    print(paste0("i=",i, " Cumulative Proportion=",cumul_prop))
+  }
+  print(paste0("To get the ", searched_accum_var, "% variance, wee need first ", i, " principal components"))
+  i
+}
+
+
+# get reconstruction of pca
+get_reconstructed_pca <- function(dataset){
+    restr <- dataset$x %*% t(dataset$rotation)
+    # unscale and uncenter the data
+    if(dataset$scale != FALSE){
+      restr <- scale(restr, center = FALSE , scale=1/dataset$scale)
+    }
+    if(all(dataset$center != FALSE)){
+      restr <- scale(restr, center = -1 * dataset$center, scale=FALSE)
+    }
+   restr
+  }
+```
+
+``` {r}
+
+#load("../data/id100.Rda")
+#shuffled_df <- id[sample(nrow(id)),]
+#shuffled_df <- id
+
+# All persons in
+load("../data/idList-co-100.Rdata")
+id <- do.call(rbind, idList[1:10])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+# id - huge dataframe with everyone as TRAINING
+
+set.seed(423)
+shuffled_df <- id[sample(nrow(id)),]
+```
+``` {r}
+
+df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = TRUE)
+#df_pca <- prcomp(id[,(2:ncol(id))], center = TRUE,scale. = TRUE)
+pca_sum <- summary(df_pca)
+#print(pca_sum$x)
+
+
+
+# show the cipher gotten from reconstruction
+show_pca_reconstruction <- function(dataset, searched_variance){
+  
+  limit_pca_rank <- get_pcs_for_accum_variance(dataset, searched_accum_var)# how to get the components that give us the % of variance?
+  wanted_pcs <- prcomp(dataset[,(2:ncol(dataset))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
+  print(wanted_pcs)
+  print(paste0("function returns data with dimensions", dim(wanted_pcs)))
+
+  restr <- get_reconstructed_pca(wanted_pcs)
+  
+  #cipher_index <- 3*400 + 3 # get any index of a cipher - ideally show all 10 digits
+  # find indexes of digits and print them
+  #for (digit in c(0,9)){
+  #  cipher_index <- 1
+  #  while (dataset[cipher_index, ]$V1 != digit){
+  #    cipher_index <- cipher_index + 1
+  #  } 
+  #  image(get_img_rot(restr, cipher_index), col = gray(0:100/100) )
+  #}
+  image(get_img_rot(restr, cipher_index), col = gray(0:100/100) )
+}
+
+cipher_index <- 100
+image(get_img_rot(shuffled_df, cipher_index), col = gray(0:100/100) )
+#accumulated_variance_v <- c(80, 90, 95, 99)
+accumulated_variance_v <- c(80)
+for (searched_accum_var in accumulated_variance_v){
+  show_pca_reconstruction(shuffled_df, searched_accum_var)
+}
+```
+
+
+
+
+
+
+
+
+
+found a nice github repo
 ``` {r from_outside}
 
 rotate <- function(x) t(apply(x, 2, rev))
@@ -116,6 +240,9 @@ generateCipherFromLoadings <- function(dataset, ciphers, howManyLoadings){
 }
 ```
 
+
+
+
 ``` {r}
 # All persons in
 load("../data/idList-co-100.Rdata")
@@ -137,157 +264,3 @@ df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = T
 generateCipherFromPcaImages(df_pca, c(0:9), 324)
 
 ```
-
-
-
-
-
-``` {r performance_knn_with_pca}
-# Zouchi told sth to use prcomp $x if I remember correctly - we really need to read the documentation
-# how to get the data with only few pcs?
-
-
-# function that prints the image
-get_img <- function(df, sample_no){
-  # get matrix of number from dataset
-  # df-dataset; sample_no - which sample to return the matrix
-  img <- data.matrix(df[sample_no,2:ncol(df)])
-  matrix(img, nrow = 18, ncol = 18, byrow = FALSE)
-  #rotate <- function(x) t(apply(x, 2, rev))
-  #matrix <- rotate(matrix)
-}
-
-rotate <- function(x) t(apply(x, 2, rev))
-
-get_img_rot <- function(dataset, id_no){
-  # modified code that we got in exercise, put only dataset and id of number
-  id_mat <- data.matrix(dataset, rownames.force = NA)
-  
-  
-  # wants to print only 0-9 digits
-  #rotated <- c(id_mat[-400+id_no*400+1, 2:ncol(id_mat)])
-  
-  # prints digit from id
-  rotated <- c(id_mat[id_no, 2:ncol(id_mat)])
-  
-  rotated <- ((rotated - min(rotated)) / (max(rotated) - min(rotated)))
-  image <- matrix(rotated,nrow = 18,ncol = 18, byrow = FALSE)
-  image <- rotate(image)
-}
-
-
-# function that returns the wanted PCs
-get_pcs_covering_variance <-function(data, searched_variance){
-  pca <- prcomp(data[,(2:ncol(data))], center = TRUE,scale. = TRUE)
-  pca_sum <- summary(pca)
-  
-  i <- 1 # keep track of the principle component number
-  cumul_prop = pca_sum$importance[3, i] # get cumulative proportion of current PC
-  print(paste0("searched_accum_var=",searched_accum_var))
-  print(paste0("i=",i, " Cumulative Proportion=",cumul_prop))
-  while(cumul_prop*100 <  searched_accum_var){
-    i <- i + 1
-    cumul_prop = pca_sum$importance[3, i] # get cumulative proportion of current PC
-    print(paste0("i=",i, " Cumulative Proportion=",cumul_prop))
-  }
-  searched_pcs = pca_sum$importance[, seq(1, i, 1)]
-  print(paste0("To get the ", searched_accum_var, "% variance, wee need first ", i, " principal components"))
-  #print(searched_pcs)
-  df_pca[, seq(1, i, 1)]  # ERROR WITH THIS FUNCTION
-  #df_pca[, 1:i]
-}
-
-# get the maximum needed number for getting the searched variance 
-get_pca_number <-function(data, searched_variance){
-  pca <- prcomp(data[,(2:ncol(data))], center = TRUE,scale. = TRUE)
-  pca_sum <- summary(pca)
-  
-  i <- 1 # keep track of the principle component number
-  cumul_prop = pca_sum$importance[3, i] # get cumulative proportion of current PC
-  print(paste0("searched_accum_var=",searched_accum_var))
-  print(paste0("i=",i, " Cumulative Proportion=",cumul_prop))
-  while(cumul_prop*100 <  searched_accum_var){
-    i <- i + 1
-    cumul_prop = pca_sum$importance[3, i] # get cumulative proportion of current PC
-    print(paste0("i=",i, " Cumulative Proportion=",cumul_prop))
-  }
-  print(paste0("To get the ", searched_accum_var, "% variance, wee need first ", i, " principal components"))
-  i
-}
-```
-
-``` {r}
-
-#load("../data/id100.Rda")
-#shuffled_df <- id[sample(nrow(id)),]
-#shuffled_df <- id
-
-# All persons in
-load("../data/idList-co-100.Rdata")
-id <- do.call(rbind, idList[1:10])
-id <- as.data.frame(id)
-id$V1 <- factor(id$V1)
-# id - huge dataframe with everyone as TRAINING
-
-set.seed(423)
-shuffled_df <- id[sample(nrow(id)),]
-```
-``` {r}
-
-df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = TRUE)
-#df_pca <- prcomp(id[,(2:ncol(id))], center = TRUE,scale. = TRUE)
-pca_sum <- summary(df_pca)
-#print(pca_sum$x)
-
-# how to get the components that give us the % of variance?
-
-#accumulated_variance_v <- c(80, 90, 95, 99)
-accumulated_variance_v <- c(80)
-for (searched_accum_var in accumulated_variance_v){
-  #wanted_pcs <- get_pcs_covering_variance(id, searched_accum_var)  # ERROR HERE
-  limit_pca_rank <- get_pca_number(id, searched_accum_var)
-  wanted_pcs <- pca <- prcomp(id[,(2:ncol(id))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
-  print(wanted_pcs)
-  print(paste0("function returns data with dimensions", dim(wanted_pcs)))
-  # Now the questions is how to understand this data?
-  
-  # let's try and print first pca as image
-  # visualize image
-  #try to show a number
-  cipherNumber <- 3*400 + 3
-  
-  image(get_img_rot(shuffled_df, cipherNumber), col = gray(0:100/100) )
-  
-  #image(get_img_rot(wanted_pcs$x, cipherNumber), col = gray(0:100/100)) # looks most probably bad - should in any way resemble any number - either understanding of pc is wrong or getting an image of cipher
-  
-  
-  generateCipherFromPcaImages <- function(dataset, ciphers){
-    
-    restr <- dataset$x %*% t(dataset$rotation)
-    
-    # unscale and uncenter the data
-    if(dataset$scale != FALSE){
-      restr <- scale(restr, center = FALSE , scale=1/dataset$scale)
-    }
-    if(all(dataset$center != FALSE)){
-      restr <- scale(restr, center = -1 * dataset$center, scale=FALSE)
-    }
-    
-    for(cipher in ciphers) {
-      idx = (cipher * (nrow(dataset$x) / 10)) + 1
-      imageSize = sqrt(ncol(dataset$x))
-      imageMatrix <- matrix( restr[idx:idx+399,1:ncol(restr)], nrow = imageSize, ncol=imageSize, byrow= FALSE)
-      imageMatrix <- rotate(imageMatrix)
-      image(imageMatrix, col=gray((0:255)/255))
-    }
-  }
-  generateCipherFromPcaImages(wanted_pcs, c(0:9))
-  
-  
-  #ok it seems like we have to rotate it additionally-there is a code for that I guess in the pdf of exercise
-  #still it seems like the PCs gotten are wrong, but the dimensions seemed okish
-  
-  # this might be cool! https://www.r-bloggers.com/2019/10/reconstructing-images-using-pca/
-}
-```
-

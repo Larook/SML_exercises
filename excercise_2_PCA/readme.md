@@ -6,6 +6,9 @@
 FOUND a SAVIOUR thanks to Ines!
 https://github.com/LennartOlsen/pca-digits/blob/master/main.r
 
+OK reconstruction has just worked!
+![reconstruction_proof](reconstruction_proof.png)
+
 ## Exercise 2.1: Principal Component Analysis (PCA)
 Here we in general will need to do kNN with the PCA-based dimensionality reduction
 	check the performance - time and maybe also accuracy?
@@ -38,5 +41,7 @@ applying smoothing to the images and cross validation
 plotting eigenvectors as images
 Maybe 2.4.3 will be difficult
 how to re-recreate -> checking how data size was reduced etc
+
+
 
  
