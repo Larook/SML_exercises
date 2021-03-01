@@ -3,7 +3,8 @@
 
 ## Our opinions on the exercise / plan how to solve it / what was already used - what's new.
 
-
+FOUND a SAVIOUR thanks to Ines!
+https://github.com/LennartOlsen/pca-digits/blob/master/main.r
 
 ## Exercise 2.1: Principal Component Analysis (PCA)
 Here we in general will need to do kNN with the PCA-based dimensionality reduction
@@ -37,4 +38,5 @@ applying smoothing to the images and cross validation
 plotting eigenvectors as images
 Maybe 2.4.3 will be difficult
 how to re-recreate -> checking how data size was reduced etc
+
  

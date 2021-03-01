@@ -82,6 +82,102 @@ print_plots_pca(shuffled_df)
 
 ## 2.1.2 Show the performance of selecting enough principal components to represent 80%, 90%, 95%, 99% of the accumulated variance. For each test vary “k” in kNN, try 3 reasonable values.
 
+found a nice github reop
+``` {r from_outside}
+
+rotate <- function(x) t(apply(x, 2, rev))
+
+
+generateCipherImages <- function(dataset, ciphers){
+  for(cipher in ciphers) {
+    idx = (cipher * (nrow(dataset) / 10)) + 1
+    imageSize = sqrt(ncol(dataset) - 1)
+    imageMatrix <- matrix( dataset[idx:idx + 399,2:ncol(dataset)], nrow = imageSize, ncol=imageSize, byrow= FALSE)
+    imageMatrix <- rotate(imageMatrix)
+    image(imageMatrix, col=gray((0:255)/255))
+  }
+}
+
+generateCipherFromPcaImages <- function(dataset, ciphers, howManyPCs){
+  
+  restr <- dataset$x[,1:howManyPCs] %*% t(dataset$rotation[,1:howManyPCs])
+  
+  # unscale and uncenter the data
+  if(dataset$scale != FALSE){
+    restr <- scale(restr, center = FALSE , scale=1/dataset$scale)
+  }
+  if(all(dataset$center != FALSE)){
+    restr <- scale(restr, center = -1 * dataset$center, scale=FALSE)
+  }
+  
+  for(cipher in ciphers) {
+    idx = (cipher * (nrow(dataset$x) / 10)) + 1
+    imageSize = sqrt(ncol(dataset$x))
+    imageMatrix <- matrix( restr[idx:idx+399,1:ncol(restr)], nrow = imageSize, ncol=imageSize, byrow= FALSE)
+    imageMatrix <- rotate(imageMatrix)
+    image(imageMatrix, col=gray((0:255)/255))
+  }
+}
+
+generateCipherFromLoadings <- function(dataset, ciphers, howManyLoadings){
+  
+  # unscale and uncenter the data
+  
+  for(cipher in ciphers) {
+    idx = (cipher * (nrow(dataset$rotation) / 10)) + 1
+    print(idx)
+    imageSize = sqrt(ncol(dataset$x))
+    imageMatrix <- matrix( dataset$rotation[0:36,1:howManyLoadings], nrow = imageSize, ncol=imageSize, byrow= FALSE)
+    imageMatrix <- rotate(imageMatrix)
+    image(imageMatrix, col=gray((0:255)/255))
+  }
+}
+
+
+# All persons in
+load("../data/idList-co-100.Rdata")
+id <- do.call(rbind, idList[1:10])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+# id - huge dataframe with everyone as TRAINING
+
+set.seed(423)
+shuffled_df <- id[sample(nrow(id)),]
+df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = TRUE)
+
+```
+
+``` {r try}
+
+#pca_sum <- summary(df_pca)
+
+generateCipherFromPcaImages(df_pca, c(6), 20)
+generateCipherFromLoadings(df_pca, c(6), 100)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 OK HERE WE SHOULD TEST IF WE UNDERSTAND PCA AND CAN VISUALIZE IT
 https://www.r-bloggers.com/2019/10/reconstructing-images-using-pca/
@@ -139,6 +235,7 @@ recovered_imgs <- map_dfr(n_pcs,
 
 
 ```
+
 
 
 
@@ -342,16 +439,15 @@ for (searched_accum_var in accumulated_variance_v){
   image(get_img_rot(wanted_pcs$x, cipherNumber), col = gray(0:100/100)) # looks most probably bad - should in any way resemble any number - either understanding of pc is wrong or getting an image of cipher
   
   id_pca <- wanted_pcs
-  proportion <- summary(id_pca)$importance[3, ]
-  plot(id_pca$rotation[,1])
-  Proportion <- 
   
-  trunc <- id_pca$x[cipherNumber,] %*%
-    t(id_pca$rotation[,])
   
-  trunc <- scale(trunc, center = -1 * id_pca$center, scale=FALSE)
-  trunc_img <- matrix(trunc,nrow = 18,ncol = 18, byrow = FALSE)
-  image(trunc_img)
+  #proportion <- summary(id_pca)$importance[3, ]
+  #plot(id_pca$rotation[,1])
+  #Proportion <- 
+  #trunc <- id_pca$x[cipherNumber,] %*% t(id_pca$rotation[,])
+  #trunc <- scale(trunc, center = -1 * id_pca$center, scale=FALSE)
+  #trunc_img <- matrix(trunc,nrow = 18,ncol = 18, byrow = FALSE)
+  #image(trunc_img)
   
 
   
