@@ -188,6 +188,8 @@ for (searched_accum_var in accumulated_variance_v){
 
 
 
+
+
 found a nice github repo
 ``` {r from_outside}
 

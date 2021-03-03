@@ -7,8 +7,18 @@ FOUND a SAVIOUR thanks to Ines!
 https://github.com/LennartOlsen/pca-digits/blob/master/main.r
 
 OK reconstruction has just worked!
-![reconstruction_proof](reconstruction_proof.png)
 
+![reconstruction_proof](figures/reconstruction_proof.png)
+
+Plots need fixing!
+
+![plots_for_fixing](figures/knn_plotting.png)
+
+
+ALMOST DONE
+TODO: 
+check this efficiency for training and test sets (I am not sure if its correct)
+fix the plots - plot also st deviation on the same plots
 ## Exercise 2.1: Principal Component Analysis (PCA)
 Here we in general will need to do kNN with the PCA-based dimensionality reduction
 	check the performance - time and maybe also accuracy?
@@ -24,24 +34,22 @@ x - value of rotated data. We can use it directly for our training. Data already
 	
 Then he goes to explaining normalization and next steps
 
+Actually I haven't really followed his instructions - maybe would be cool if we can use summary(pca) instead of calculations but nevertheless even change shouldn't be that hard
 
--> Ok maybe we can visualize PCA with this???
-https://www.r-bloggers.com/2019/10/reconstructing-images-using-pca/
 
+TODO:
 ## Exercise 2.2: Normalization
 min-max normalization and z-standarization - Norbert says we have to do only 1 method!
 also do then knn with 10 fold cross-validation.
 
-
+TODO:
 ## Exercise 2.3: Preprocessing
 applying smoothing to the images and cross validation
 
-
+TODO:
 ## Exercise 2.4: Reconstruction using PCA
 plotting eigenvectors as images
 Maybe 2.4.3 will be difficult
 how to re-recreate -> checking how data size was reduced etc
 
 
-
- 

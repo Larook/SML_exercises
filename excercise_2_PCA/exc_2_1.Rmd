@@ -1,0 +1,266 @@
+---
+title: "Exercise_1_KNN"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gmodels)
+library(class)
+library(caret)
+library(swirl)
+```
+
+## Exercise 2
+#official saviour https://github.com/LennartOlsen/pca-digits/blob/master/main.r
+## Excercise 2.1 Principal Component Analysis (PCA)
+Perform a PCA on the data for the “all persons in” and “disjunct” data set.
+
+PCA loading vector - the directions in feature space along which the data vary the most
+PCA scores - projections along these directions
+
+
+### 2.1.1 Show the standard deviation ( From prcomp Eigenvalues ), the proportion of variance and the cumulative sum of variance of the principal components. (In the report the first 10-20 principal components, should be sufficient to illustrate the tendencies.)
+
+
+``` {r PCA}
+print_plots_pca <- function(data){
+  # help https://www.datacamp.com/community/tutorials/pca-analysis-r
+  df_pca <- prcomp(x=data[,(2:ncol(data))], scale = TRUE, center = TRUE)
+  pca_sum <- summary(df_pca)
+  print(pca_sum)
+  
+
+  # my previous tries before remarks from Zouchi
+  print(pca_sum$importance[,1:20])
+  pca_std_variance <- pca_sum$importance[1,1:20]
+  plot(pca_std_variance, main="standard deviation of first 20 PCAs")
+  
+  pca_proportion_of_variance <- pca_sum$importance[2,1:20]
+  plot(pca_proportion_of_variance, main="proportion of variance of first 20 PCAs")
+  
+  pca_cumulative_proportion <- pca_sum$importance[3,1:20]
+  plot(pca_cumulative_proportion, main="cumulative proportion first 20 PCAs")
+}
+
+
+# All persons in
+load("../data/idList-co-100.Rdata")
+id <- do.call(rbind, idList[1:10])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+# id - huge dataframe with everyone as TRAINING
+
+set.seed(423)
+shuffled_df <- id[sample(nrow(id)),]
+print_plots_pca(shuffled_df)
+
+# disjunt data
+#id <- idList[[1]]
+#shuffled_df <- id[sample(nrow(id)),]
+#print_plots_pca(shuffled_df)
+
+```
+
+## 2.1.2 Show the performance of selecting enough principal components to represent 80%, 90%, 95%, 99% of the accumulated variance. For each test vary “k” in kNN, try 3 reasonable values.
+
+``` {r VERY_IMPORTANT_FUNCTIONS}
+# Zouchi told sth to use prcomp $x if I remember correctly - we really need to read the documentation
+# how to get the data with only few pcs?
+#VERY IMPORTANT FUNCTIONS
+
+
+# function that prints the image
+get_img <- function(df, sample_no){
+  # get matrix of number from dataset
+  # df-dataset; sample_no - which sample to return the matrix
+  img <- data.matrix(df[sample_no,2:ncol(df)])
+  matrix(img, nrow = 18, ncol = 18, byrow = FALSE)
+}
+
+rotate <- function(x) t(apply(x, 2, rev))
+
+# prints rotated image (we use this)
+get_img_rot <- function(dataset, id_no){
+  # modified code that we got in exercise, put only dataset and id of number
+  id_mat <- data.matrix(dataset, rownames.force = NA)
+  # get digit from id
+  rotated <- c(id_mat[id_no, 2:ncol(id_mat)])
+  rotated <- ((rotated - min(rotated)) / (max(rotated) - min(rotated)))
+  image <- matrix(rotated,nrow = 18,ncol = 18, byrow = FALSE)
+  image <- rotate(image)
+}
+
+# get the maximum needed number for getting the searched variance 
+get_pcs_for_accum_variance <-function(data, searched_variance){
+  pca <- prcomp(data[,(2:ncol(data))], center = TRUE,scale. = TRUE)
+  pca_sum <- summary(pca)
+  
+  i <- 1 # keep track of the principle component number
+  cumul_prop = pca_sum$importance[3, i] # get cumulative proportion of current PC
+  #print(paste0("searched_accum_var=",searched_accum_var))
+  #print(paste0("i=",i, " Cumulative Proportion=",cumul_prop))
+  while(cumul_prop*100 <  searched_accum_var){
+    i <- i + 1
+    cumul_prop = pca_sum$importance[3, i] # get cumulative proportion of current PC
+    print(paste0("i=",i, " Cumulative Proportion=",cumul_prop))
+  }
+  print(paste0("To get the ", searched_accum_var, "% variance, wee need first ", i, " principal components"))
+  i
+}
+
+
+# get reconstruction of pca
+get_reconstructed_pca <- function(dataset){
+    restr <- dataset$x %*% t(dataset$rotation)
+    # unscale and uncenter the data
+    if(dataset$scale != FALSE){
+      restr <- scale(restr, center = FALSE , scale=1/dataset$scale)
+    }
+    if(all(dataset$center != FALSE)){
+      restr <- scale(restr, center = -1 * dataset$center, scale=FALSE)
+    }
+   restr
+}
+
+# show the cipher gotten from reconstruction
+show_pca_reconstruction <- function(dataset, searched_variance){
+  
+  limit_pca_rank <- get_pcs_for_accum_variance(dataset, searched_accum_var)# how to get the components that give us the % of variance?
+  wanted_pcs <- prcomp(dataset[,(2:ncol(dataset))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
+  #print(wanted_pcs)
+  #print(paste0("function returns data with dimensions", dim(wanted_pcs)))
+
+  restr <- get_reconstructed_pca(wanted_pcs)
+  image(get_img_rot(restr, cipher_index), col = gray(0:100/100) )
+}
+```
+
+``` {r}
+
+# All persons in
+load("../data/idList-co-100.Rdata")
+id <- do.call(rbind, idList[1:10])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+# id - huge dataframe with everyone as TRAINING
+
+set.seed(423)
+shuffled_df <- id[sample(nrow(id)),]
+```
+``` {r}
+knn_get_pca_plot_data <- function(test_data, test_labels, train_data, train_labels, repetitions = 10, k, searched_accum_var){
+      
+    test_time_v <- c()
+    test_err_v <- c()
+    train_err_v <- c()
+    
+    for (rep in c(1:repetitions)){
+      t_start <- as.numeric(proc.time())
+      # get the prediction
+      numbers_test_pred <- knn(train = train_data, test = test_data, cl = train_labels, k=k)
+      delta_t <- (as.numeric(proc.time()) -  t_start)[3]  # seconds
+      test_time_v <- c(test_time_v, delta_t)
+      #print(test_time_v)
+      
+      # see the performance of testing data
+      k_error_test <-mean(id_test_labels != numbers_test_pred)
+      test_err_v <- c(test_err_v, k_error_test)
+      
+      # check the performance of testing data
+      numbers_train_pred <- knn(train = train_data, test = train_data, cl = train_labels, k=k_now)
+      k_error_train <-mean(id_test_labels != numbers_test_pred)
+      train_err_v <- c(train_err_v, k_error_train)
+    }
+    #plot(c(1:repetitions), test_time_v, type="l", ylab="execution time")
+    #plot(c(1:repetitions), test_err_v, type="o", ylab="test_err_v")
+    
+    return(list("searched_accum_var"=searched_accum_var, "k"=k,"test_time_v"=test_time_v, "test_err_v"=test_err_v, "train_err_v"=train_err_v))
+}
+
+# Plot all the results given the data
+plot_results <- function(plot_data_ks_l){
+  ks <- c()
+  exec_time_means <- c()
+  exec_time_stds <- c()
+  
+  test_error_means <- c()
+  test_error_stds <- c()
+  
+  train_error_means <- c()
+  train_error_stds <- c()
+    
+  for (plot_data_k in plot_data_ks_l){
+    #print(plot_data_k$k)
+    ks <- c(ks, plot_data_k$k)
+    exec_time_means <- c(exec_time_means, mean(plot_data_k$test_time_v))
+    exec_time_stds <- c(exec_time_stds, sd(plot_data_k$test_time_v))
+    
+    test_error_means <- c(test_error_means, mean(plot_data_k$test_err_v))
+    test_error_stds <- c(test_error_stds, sd(plot_data_k$test_err_v))
+    
+    train_error_means <- c(train_error_means, mean(plot_data_k$train_err_v))
+    train_error_stds <- c(train_error_stds, sd(plot_data_k$train_err_v))
+  }
+  
+  
+  main <- paste("searched accummulated variance = ", searched_accum_var, "%")
+  #TODO: how to add stds there?
+  plot(ks, exec_time_means, type="l", ylab="exec_time_means", main=main)
+  plot(ks, test_error_means, type="l", ylab="test_error_means", main=main)
+  plot(ks, train_error_means, type="l", ylab="train_error_means", main=main)
+  
+}
+
+# SINGLE PERSON DATA
+load("../data/id100.Rda")
+set.seed(423)
+shuffled_df <- id[sample(nrow(id)),]  # or maybe just dont shuffle? shuffled_df <- id
+
+ks <- c(5, 9) # ks <- c(5,9,13)
+
+df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = TRUE)
+#df_pca <- prcomp(id[,(2:ncol(id))], center = TRUE,scale. = TRUE)
+pca_sum <- summary(df_pca)
+#print(pca_sum$x)
+
+
+cipher_index <- 100
+image(get_img_rot(shuffled_df, cipher_index), col = gray(0:100/100) )
+#accumulated_variance_v <- c(80, 90, 95, 99)
+accumulated_variance_v <- c(80, 90)
+for (searched_accum_var in accumulated_variance_v){
+    limit_pca_rank <- get_pcs_for_accum_variance(shuffled_df, searched_accum_var)# how to get the components that give us the % of variance?
+  wanted_pcs <- prcomp(shuffled_df[,(2:ncol(shuffled_df))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
+  
+  #reconstructed_df <- as.data.frame(get_reconstructed_pca(wanted_pcs))
+  
+  plot_data_ks_l <- list()
+  for (k_now in ks){
+    # split 50/50
+    test_df <- wanted_pcs$x[1:2000,]  # ? reconstructed_df
+    train_df <- wanted_pcs$x[2001:4000,]
+    
+    # get the labels - supervision part
+    id_test_labels <- shuffled_df[1:2000, 1]
+    id_train_labels <- shuffled_df[2001:4000, 1]
+    
+    plot_data <- knn_get_pca_plot_data(test_data=test_df, test_labels=id_test_labels, train_data=train_df, train_labels=id_train_labels, repetitions=10, k=k_now, searched_accum_var=searched_accum_var)
+    #print(plot_data)
+    plot_data_ks_l <- append(plot_data_ks_l, list(plot_data))
+    #plot_data_ks_l <- append(plot_data_ks_l, searched_accum_var)
+    
+  }
+  #print(plot_data_ks_l)
+  
+  plot_results(plot_data_ks_l)
+  #show_pca_reconstruction(shuffled_df, searched_accum_var)
+}
+```
+
+
+## 2.1.3 Measure run times for the prediction step of the kNN-classifier with PCA based dimensionality reduction. How does the feature vector dimensionality effect performance?
+
+## 2.1.4 Interpret the results.
+Shouldn't it be answered by the plots?
+
