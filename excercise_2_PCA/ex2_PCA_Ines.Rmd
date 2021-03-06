@@ -1,0 +1,68 @@
+---
+title: "exercise2_group4_PCA"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gmodels)
+library(class)
+library(caret)
+library(swirl)
+```
+
+# Excercise 2.1 Principal Component Analysis (PCA)
+Perform a PCA on the data for the “all persons in” and “disjunct” data set.
+
+PCA loading vector - the directions in feature space along which the data vary the most
+PCA scores - projections along these directions
+
+# 2.1.1 Show the standard deviation (From prcomp Eigenvalues), the proportion of variance and the cumulative sum of variance of the principal components. 
+
+# In the report the first 10-20 principal components, should be sufficient to illustrate the tendencies.
+
+```{r}
+print_plots_pca <- function(data){
+  
+  data_pca <- prcomp(shuffled_df[,c(2:235)], center = TRUE, scale. = TRUE)
+  pca_summary <- summary(data_pca)
+  #print(pca_summary)
+  
+  pca_std_var <-pca_summary$importance[1,1:20]
+  plot(pca_std_var, main ="Standard Deviation of 20 first PCAs")
+  
+  pca_proportion_var <-pca_summary$importance[2,1:20]
+  plot(pca_proportion_var, main ="Proportion of Variance of 20 first PCAs")
+  
+  pca_cumulative_var <-pca_summary$importance[3,1:20]
+  plot(pca_cumulative_var, main ="Cumulative Proportion of 20 first PCAs")
+
+}
+# Zhuoqi has said in class to do it using Eigenvalues but summary seems to work just as well. 
+# Must do it with All persons in (everyone used as training data) + Disjunct dataset (still unclear about that one)
+
+#From Karol's code: 
+# All persons in
+load ("data/idList-co-100.Rdata") 
+id <- do.call(rbind, idList[1:10])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+# id - huge dataframe with everyone as TRAINING
+
+set.seed(423)
+shuffled_df <- id[sample(nrow(id)),]
+print_plots_pca(shuffled_df)
+
+# Disjunct data
+#id <- idList[[1]]
+#shuffled_df <- id[sample(nrow(id)),]
+#print_plots_pca(shuffled_df)
+
+```
+
+## 2.1.2 Show the performance of selecting enough principal components to represent 80%, 90%, 95%, 99% of the accumulated variance. For each test vary “k” in kNN, try 3 reasonable values.
+```{r}
+
+```
+
+
