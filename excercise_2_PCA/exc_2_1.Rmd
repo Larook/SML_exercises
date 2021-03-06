@@ -139,11 +139,9 @@ show_pca_reconstruction <- function(dataset, searched_variance){
 
   restr <- get_reconstructed_pca(wanted_pcs)
   image(get_img_rot(restr, cipher_index), col = gray(0:100/100) )
-}
-```
+} 
 
 
-``` {r}
 library(ggplot2)
 knn_get_pca_plot_data <- function(test_data, test_labels, train_data, train_labels, repetitions = 10, k, searched_accum_var){
       
@@ -230,36 +228,48 @@ plot_results <- function(plot_data_ks_l){
   return(list_of_plots)
 }
 
-
+# basically function does the whole exercise
 get_plots_exc_2_1 <- function(id_dataset, is_disjunct){
   set.seed(423)
-  shuffled_df <- id_dataset[sample(nrow(id_dataset)),]  # or maybe just dont shuffle? shuffled_df <- id
-  
   ks <- c(15, 35)# 75) #, 75) # ks <- c(5,9,13)
-  
-  #df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = TRUE)
-  #df_pca <- prcomp(id[,(2:ncol(id))], center = TRUE,scale. = TRUE)
-  #pca_sum <- summary(df_pca)
-  #print(pca_sum$x)
-  
-  #cipher_index <- 100
-  #image(get_img_rot(shuffled_df, cipher_index), col = gray(0:100/100) )
-  
   accumulated_variance_v <- c(80)#, 90, 95, 99)
+  
+  shuffled_df <- id_dataset[sample(nrow(id_dataset)),]
+  
+  # split 50/50
+  test_rows_id <- c()
+  train_rows_id <- c()
+  if (is_disjunct == TRUE){
+      rows_per_digit <- 200
+      rows_per_person <- 10 * rows_per_digit
+      
+      test_rows_id <- 1:(rows_per_person*floor(length(idList)/2))
+      train_rows_id <- (rows_per_person*floor(length(idList)/2) + 1) : nrow(shuffled_df)
+      
+      print("test_rows_id :")
+      print(test_rows_id)
+    } else {
+      test_rows_id <- 1:(nrow(shuffled_df)/2)
+      train_rows_id <- ((nrow(shuffled_df)/2) + 1) :nrow(shuffled_df)
+    }
+  
+  
   for (searched_accum_var in accumulated_variance_v){
+    # how to get the components that give us the % of variance?
+    limit_pca_rank <- get_pcs_for_accum_variance(shuffled_df, searched_accum_var)
     
-    limit_pca_rank <- get_pcs_for_accum_variance(shuffled_df, searched_accum_var)# how to get the components that give us the % of variance?
+    # get pcs
     wanted_pcs <- prcomp(shuffled_df[,(2:ncol(shuffled_df))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
     
     plot_data_ks_l <- list()
     for (k_now in ks){
-      # split 50/50
-      test_df <- wanted_pcs$x[1:(nrow(id)/2),]  # ? reconstructed_df
-      train_df <- wanted_pcs$x[(nrow(id)/2 + 1):nrow(id),]
+  
+      test_df <- wanted_pcs$x[test_rows_id,]  # HERE ERROR FOR DISJUNCT - can't operate on the ids -> write just separate function
+      train_df <- wanted_pcs$x[train_rows_id,]
       
       # get the labels - supervision part
-      id_test_labels <- shuffled_df[1:(nrow(id)/2), 1]
-      id_train_labels <- shuffled_df[(nrow(id)/2 + 1):nrow(id), 1]
+      id_test_labels <- shuffled_df[test_rows_id, 1]
+      id_train_labels <- shuffled_df[train_rows_id, 1]
       
       plot_data <- knn_get_pca_plot_data(test_data=test_df, test_labels=id_test_labels, train_data=train_df, train_labels=id_train_labels, repetitions=10, k=k_now, searched_accum_var=searched_accum_var)
       #print(plot_data)
@@ -276,25 +286,41 @@ get_plots_exc_2_1 <- function(id_dataset, is_disjunct){
 }
 ```
 
+``` {r disjunct}
+# All persons in
+#load("../data/idList-co-100.Rdata")  
+load("../data/idList-cornered-100-2021.Rdata") 
+id <- do.call(rbind, idList[1:2])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+# id - huge dataframe with everyone as TRAINING
+
+get_plots_exc_2_1(id_dataset=id, is_disjunct=TRUE)
+```
+
+
+
+``` {r all persons in}
+# All persons in
+#load("../data/idList-co-100.Rdata")  
+load("../data/idList-cornered-100-2021.Rdata") 
+id <- do.call(rbind, idList)
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+# id - huge dataframe with everyone as TRAINING
+
+get_plots_exc_2_1(id_dataset=id, is_disjunct=FALSE)
+```
+
+
+
+
 ``` {r single person data}
 
 # SINGLE PERSON DATA
 load("../data/id100.Rda")
 get_plots_exc_2_1(id_dataset=id, is_disjunct=FALSE)
 
-```
-
-``` {r all persons in}
-# TRY BIG DATASET
-# All persons in
-#load("../data/idList-co-100.Rdata")  
-load("../data/idList-cornered-100-2021.Rdata") 
-id <- do.call(rbind, idList[1:10])
-id <- as.data.frame(id)
-id$V1 <- factor(id$V1)
-# id - huge dataframe with everyone as TRAINING
-
-get_plots_exc_2_1(id)
 ```
 
 
