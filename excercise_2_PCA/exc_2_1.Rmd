@@ -106,12 +106,12 @@ get_pcs_for_accum_variance <-function(data, searched_variance){
   cumul_prop = pca_sum$importance[3, i] # get cumulative proportion of current PC
   #print(paste0("searched_accum_var=",searched_accum_var))
   #print(paste0("i=",i, " Cumulative Proportion=",cumul_prop))
-  while(cumul_prop*100 <  searched_accum_var){
+  while(cumul_prop*100 <  searched_variance){
     i <- i + 1
     cumul_prop = pca_sum$importance[3, i] # get cumulative proportion of current PC
     #print(paste0("i=",i, " Cumulative Proportion=",cumul_prop))
   }
-  print(paste0("To get the ", searched_accum_var, "% variance, wee need first ", i, " principal components"))
+  print(paste0("To get the ", searched_variance, "% variance, wee need first ", i, " principal components"))
   i
 }
 
@@ -154,6 +154,7 @@ id$V1 <- factor(id$V1)
 set.seed(423)
 shuffled_df <- id[sample(nrow(id)),]
 ```
+
 ``` {r}
 library(ggplot2)
 knn_get_pca_plot_data <- function(test_data, test_labels, train_data, train_labels, repetitions = 10, k, searched_accum_var){
@@ -172,7 +173,7 @@ knn_get_pca_plot_data <- function(test_data, test_labels, train_data, train_labe
       #print(test_time_v)
       
       # see the performance on testing data
-      k_accuracy_test <-get_accuracy(id_test_labels, numbers_test_pred)
+      k_accuracy_test <-get_accuracy(test_labels, numbers_test_pred)
       test_accuracy_v <- c(test_accuracy_v, k_accuracy_test)
       
       # check the performance on testing data
@@ -211,7 +212,7 @@ plot_results <- function(plot_data_ks_l){
   df_plots <-data.frame(ks= ks, exec_time_means=exec_time_means, test_accuracy_stds=test_accuracy_stds)
   #print(head(df_plots))
   
-  main <- paste("searched accummulated variance = ", searched_accum_var, "%")
+  main <- paste("searched accummulated variance = ", plot_data_k$searched_accum_var, "%")
   
   g_time <- ggplot(df_plots, aes(x=ks)) + 
     geom_line(aes(y=exec_time_means)) + 
@@ -221,16 +222,6 @@ plot_results <- function(plot_data_ks_l){
          caption="Source: abcd", 
          y="time [ms]",
          x="k-number of nearest neighbours") 
-  
-  # g_test <- ggplot(df_plots, aes(x=ks)) + 
-  #   geom_line(aes(y=test_accuracy_means)) + 
-  #   geom_ribbon(aes(ymax=test_accuracy_means+test_accuracy_stds, ymin=test_accuracy_means-test_accuracy_stds), fill="pink", alpha=.5) +
-  #   labs(title=main, 
-  #        subtitle="test data accuracy", 
-  #        caption="Source: abcd", 
-  #        y="accuracy [%]",
-  #        x="k-number of nearest neighbours")
-  
   
   colors <- c("test data" = "darkgreen", "train data" = "darkblue" )
   g_accuracy <- ggplot(df_plots, aes(x=ks)) + 
@@ -251,52 +242,57 @@ plot_results <- function(plot_data_ks_l){
   return(list_of_plots)
 }
 
+
+get_plots_exc_2_1 <- function(id_dataset){
+  set.seed(423)
+  shuffled_df <- id_dataset[sample(nrow(id_dataset)),]  # or maybe just dont shuffle? shuffled_df <- id
+  
+  ks <- c(15, 35, 75, 150) #, 75) # ks <- c(5,9,13)
+  #ks <- c(2:50) #, 75) # ks <- c(5,9,13)
+  
+  df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = TRUE)
+  #df_pca <- prcomp(id[,(2:ncol(id))], center = TRUE,scale. = TRUE)
+  pca_sum <- summary(df_pca)
+  #print(pca_sum$x)
+  
+  
+  cipher_index <- 100
+  image(get_img_rot(shuffled_df, cipher_index), col = gray(0:100/100) )
+  #accumulated_variance_v <- c(80, 90, 95, 99)
+  accumulated_variance_v <- c(80)#, 90)
+  for (searched_accum_var in accumulated_variance_v){
+    
+    limit_pca_rank <- get_pcs_for_accum_variance(shuffled_df, searched_accum_var)# how to get the components that give us the % of variance?
+    wanted_pcs <- prcomp(shuffled_df[,(2:ncol(shuffled_df))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
+    
+    plot_data_ks_l <- list()
+    for (k_now in ks){
+      # split 50/50
+      test_df <- wanted_pcs$x[1:2000,]  # ? reconstructed_df
+      train_df <- wanted_pcs$x[2001:4000,]
+      
+      # get the labels - supervision part
+      id_test_labels <- shuffled_df[1:2000, 1]
+      id_train_labels <- shuffled_df[2001:4000, 1]
+      
+      plot_data <- knn_get_pca_plot_data(test_data=test_df, test_labels=id_test_labels, train_data=train_df, train_labels=id_train_labels, repetitions=10, k=k_now, searched_accum_var=searched_accum_var)
+      #print(plot_data)
+      plot_data_ks_l <- append(plot_data_ks_l, list(plot_data))
+      
+    }
+    
+    list_of_plots <- plot_results(plot_data_ks_l)
+    print(list_of_plots[1])
+    print(list_of_plots[2])
+    #show_pca_reconstruction(shuffled_df, searched_accum_var)
+  }
+  
+}
+
 # SINGLE PERSON DATA
 load("../data/id100.Rda")
-set.seed(423)
-shuffled_df <- id[sample(nrow(id)),]  # or maybe just dont shuffle? shuffled_df <- id
+get_plots_exc_2_1(id)
 
-ks <- c(15, 35, 75, 150) #, 75) # ks <- c(5,9,13)
-#ks <- c(2:50) #, 75) # ks <- c(5,9,13)
-
-df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = TRUE)
-#df_pca <- prcomp(id[,(2:ncol(id))], center = TRUE,scale. = TRUE)
-pca_sum <- summary(df_pca)
-#print(pca_sum$x)
-
-
-cipher_index <- 100
-image(get_img_rot(shuffled_df, cipher_index), col = gray(0:100/100) )
-#accumulated_variance_v <- c(80, 90, 95, 99)
-accumulated_variance_v <- c(80)#, 90)
-for (searched_accum_var in accumulated_variance_v){
-  
-  limit_pca_rank <- get_pcs_for_accum_variance(shuffled_df, searched_accum_var)# how to get the components that give us the % of variance?
-  wanted_pcs <- prcomp(shuffled_df[,(2:ncol(shuffled_df))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
-  
-  plot_data_ks_l <- list()
-  for (k_now in ks){
-    # split 50/50
-    test_df <- wanted_pcs$x[1:2000,]  # ? reconstructed_df
-    train_df <- wanted_pcs$x[2001:4000,]
-    
-    # get the labels - supervision part
-    id_test_labels <- shuffled_df[1:2000, 1]
-    id_train_labels <- shuffled_df[2001:4000, 1]
-    
-    plot_data <- knn_get_pca_plot_data(test_data=test_df, test_labels=id_test_labels, train_data=train_df, train_labels=id_train_labels, repetitions=10, k=k_now, searched_accum_var=searched_accum_var)
-    #print(plot_data)
-    plot_data_ks_l <- append(plot_data_ks_l, list(plot_data))
-    #plot_data_ks_l <- append(plot_data_ks_l, searched_accum_var)
-    
-  }
-  #print(plot_data_ks_l)
-  
-  list_of_plots <- plot_results(plot_data_ks_l)
-  print(list_of_plots[1])
-  print(list_of_plots[2])
-  #show_pca_reconstruction(shuffled_df, searched_accum_var)
-}
 ```
 
 
