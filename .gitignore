@@ -2,3 +2,4 @@
 # I mean ignore all ".RData" that comes from  current exercise - sometimes the file is too big to push
 exc*/.RData
 exc*/.Rhistory
+exc*/.RDataTmp

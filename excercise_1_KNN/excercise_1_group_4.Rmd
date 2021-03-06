@@ -1,5 +1,5 @@
 ---
-title: "Exercise_1_KNN"
+title: "Exercise 1 KNN"
 output: pdf_document
 ---
 
@@ -82,12 +82,19 @@ Analyse performance with varying K.
 
  accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
 
+get_accuracy <- function(predicted_labels, test_labels){
+  # accuracy(table(numbers_test_pred,id_test_labels))
+  tab <- table(predicted_labels, test_labels)
+  sum(diag(tab)/(sum(rowSums(tab)))) * 100
+}
+
 load("../data/id100.Rda")
 set.seed(423)
 
 k_error_avg_vec <- c()
 timing_now_avg_vec <- c()
-ks <- c(1, 5, 9, 15, 19, 25, 29)
+#ks <- c(1, 5, 9, 15, 19, 25, 29)
+ks <- c(9,29,39,49,59,69,79,89,99,109,119,129,139,149,159,169)
 # ks <- 1:40
 
 for (k_now in ks ){
@@ -114,7 +121,12 @@ for (k_now in ks ){
     numbers_test_pred <- knn(train = train_df[,c(2:325)], test = test_df[,c(2:325)], cl = id_train_labels, k=k_now)
     timing_now <- (Sys.time() - t_start ) * 1000 #ms
     
-    k_error <- k_error +mean(id_test_labels != numbers_test_pred)
+    #k_error <- k_error +mean(id_test_labels != numbers_test_pred)
+      # create table to calculate accuracy
+    #accuracy_now <- accuracy(table(numbers_test_pred,id_test_labels))
+    accuracy_now <- get_accuracy(numbers_test_pred,id_test_labels)
+    k_error <- k_error + accuracy_now
+    
     timing_now_avg <- timing_now_avg + timing_now
 
   }
@@ -127,7 +139,7 @@ for (k_now in ks ){
   
   print(paste0("k_now = ", k_now, " k_error_avg = ", k_error_avg, " timing_now_avg=", timing_now_avg ))
 }
-plot(ks, k_error_avg_vec, type="o", ylab="misclassification error")
+plot(ks, k_error_avg_vec, type="o", ylab="accuracy")
 plot(ks, timing_now_avg_vec, type="o", ylab="average execution time [ms]")
 ```
 In order to ensure that the model will accurately predict and generalize the future data, we must choose the appropriate K. To do so, we tested several (odd) values of k on the dataset, through trial and errors.
