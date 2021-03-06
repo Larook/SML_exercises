@@ -19,6 +19,26 @@ ALMOST DONE
 TODO: 
 check this efficiency for training and test sets (I am not sure if its correct)
 fix the plots - plot also st deviation on the same plots
+
+
+- compare test and train data accuracy on 1 plot
+
+
+- UPGRADE TO NEW DATA - check if it works there too
+
+
+- only individual 2.1 made -> need also ALL PERSONS IN in and DISJUNCT
+
+
+- CROSS VALIDATION and NORMALIZATION
+
+
+- PREPROCESSING and CV
+
+
+- RECONSTRUCTION
+
+
 ## Exercise 2.1: Principal Component Analysis (PCA)
 Here we in general will need to do kNN with the PCA-based dimensionality reduction
 	check the performance - time and maybe also accuracy?
