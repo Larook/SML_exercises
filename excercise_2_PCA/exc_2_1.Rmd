@@ -177,7 +177,7 @@ knn_get_pca_plot_data <- function(test_data, test_labels, train_data, train_labe
       
       # check the performance on testing data
       numbers_train_pred <- knn(train = train_data, test = train_data, cl = train_labels, k=k)
-      k_accuracy_train <-get_accuracy(id_test_labels, numbers_test_pred)
+      k_accuracy_train <-get_accuracy(train_labels, numbers_train_pred)
       train_accuracy_v <- c(train_accuracy_v, k_accuracy_train)
     }
     
@@ -255,6 +255,7 @@ set.seed(423)
 shuffled_df <- id[sample(nrow(id)),]  # or maybe just dont shuffle? shuffled_df <- id
 
 ks <- c(15, 35, 75, 150) #, 75) # ks <- c(5,9,13)
+#ks <- c(2:50) #, 75) # ks <- c(5,9,13)
 
 df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = TRUE)
 #df_pca <- prcomp(id[,(2:ncol(id))], center = TRUE,scale. = TRUE)
@@ -267,10 +268,9 @@ image(get_img_rot(shuffled_df, cipher_index), col = gray(0:100/100) )
 #accumulated_variance_v <- c(80, 90, 95, 99)
 accumulated_variance_v <- c(80, 90)
 for (searched_accum_var in accumulated_variance_v){
-    limit_pca_rank <- get_pcs_for_accum_variance(shuffled_df, searched_accum_var)# how to get the components that give us the % of variance?
-  wanted_pcs <- prcomp(shuffled_df[,(2:ncol(shuffled_df))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
   
-  #reconstructed_df <- as.data.frame(get_reconstructed_pca(wanted_pcs))
+  limit_pca_rank <- get_pcs_for_accum_variance(shuffled_df, searched_accum_var)# how to get the components that give us the % of variance?
+  wanted_pcs <- prcomp(shuffled_df[,(2:ncol(shuffled_df))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
   
   plot_data_ks_l <- list()
   for (k_now in ks){
