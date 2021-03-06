@@ -15,13 +15,9 @@ Plots need fixing!
 ![plots_for_fixing](figures/knn_plotting.png)
 
 
-ALMOST DONE
 TODO: 
-check this efficiency for training and test sets (I am not sure if its correct)
-fix the plots - plot also st deviation on the same plots
 
-
-- compare test and train data accuracy on 1 plot
+- compare test and train data accuracy on 1 plot [DONE]
 
 
 - UPGRADE TO NEW DATA - check if it works there too

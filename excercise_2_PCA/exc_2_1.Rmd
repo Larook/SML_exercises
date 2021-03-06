@@ -212,10 +212,6 @@ plot_results <- function(plot_data_ks_l){
   #print(head(df_plots))
   
   main <- paste("searched accummulated variance = ", searched_accum_var, "%")
-  #TODO: how to add stds there?
-  #plot(ks, exec_time_means, type="l", ylab="exec_time_means", main=main)
-  #plot(ks, test_accuracy_means, type="l", ylab="test_accuracy_means", main=main)
-  #plot(ks, train_accuracy_means, type="l", ylab="train_accuracy_means", main=main)
   
   g_time <- ggplot(df_plots, aes(x=ks)) + 
     geom_line(aes(y=exec_time_means)) + 
@@ -226,25 +222,31 @@ plot_results <- function(plot_data_ks_l){
          y="time [ms]",
          x="k-number of nearest neighbours") 
   
-  g_test <- ggplot(df_plots, aes(x=ks)) + 
-    geom_line(aes(y=test_accuracy_means)) + 
-    geom_ribbon(aes(ymax=test_accuracy_means+test_accuracy_stds, ymin=test_accuracy_means-test_accuracy_stds), fill="pink", alpha=.5) +
-    labs(title=main, 
-         subtitle="test data accuracy", 
+  # g_test <- ggplot(df_plots, aes(x=ks)) + 
+  #   geom_line(aes(y=test_accuracy_means)) + 
+  #   geom_ribbon(aes(ymax=test_accuracy_means+test_accuracy_stds, ymin=test_accuracy_means-test_accuracy_stds), fill="pink", alpha=.5) +
+  #   labs(title=main, 
+  #        subtitle="test data accuracy", 
+  #        caption="Source: abcd", 
+  #        y="accuracy [%]",
+  #        x="k-number of nearest neighbours")
+  
+  
+  colors <- c("test data" = "darkgreen", "train data" = "darkblue" )
+  g_accuracy <- ggplot(df_plots, aes(x=ks)) + 
+    geom_line(aes(y=test_accuracy_means, color="test data")) + 
+    geom_ribbon(aes(ymax=test_accuracy_means+test_accuracy_stds, ymin=test_accuracy_means-test_accuracy_stds), fill="green", alpha=.5) +
+    geom_line(aes(y=train_accuracy_means, color="train data")) + 
+    geom_ribbon(aes(ymax=train_accuracy_means+train_accuracy_stds, ymin=train_accuracy_means-train_accuracy_stds), fill="blue", alpha=.5) +
+  labs(title=main, 
+         subtitle="accuracy comparison", 
          caption="Source: abcd", 
          y="accuracy [%]",
-         x="k-number of nearest neighbours")
+         x="k-number of nearest neighbours",
+        color = "Legend") +
+    scale_color_manual(values = colors)
   
-  g_train <- ggplot(df_plots, aes(x=ks)) + 
-    geom_line(aes(y=train_accuracy_means)) + 
-    geom_ribbon(aes(ymax=train_accuracy_means+train_accuracy_stds, ymin=train_accuracy_means-train_accuracy_stds), fill="pink", alpha=.5) +
-    labs(title=main, 
-         subtitle="train data accuracy", 
-         caption="Source: abcd", 
-         y="accuracy [%]",
-         x="k-number of nearest neighbours")
-  
-  list_of_plots <- list(g_time, g_test, g_train)
+  list_of_plots <- list(g_time, g_accuracy)
   
   return(list_of_plots)
 }
@@ -266,7 +268,7 @@ pca_sum <- summary(df_pca)
 cipher_index <- 100
 image(get_img_rot(shuffled_df, cipher_index), col = gray(0:100/100) )
 #accumulated_variance_v <- c(80, 90, 95, 99)
-accumulated_variance_v <- c(80, 90)
+accumulated_variance_v <- c(80)#, 90)
 for (searched_accum_var in accumulated_variance_v){
   
   limit_pca_rank <- get_pcs_for_accum_variance(shuffled_df, searched_accum_var)# how to get the components that give us the % of variance?
@@ -293,7 +295,6 @@ for (searched_accum_var in accumulated_variance_v){
   list_of_plots <- plot_results(plot_data_ks_l)
   print(list_of_plots[1])
   print(list_of_plots[2])
-  print(list_of_plots[3])
   #show_pca_reconstruction(shuffled_df, searched_accum_var)
 }
 ```
