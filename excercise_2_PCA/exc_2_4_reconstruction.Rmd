@@ -1,0 +1,201 @@
+---
+title: "Exercise_1_KNN"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gmodels)
+library(class)
+library(caret)
+library(swirl)
+```
+
+## Exercise 2
+#official saviour https://github.com/LennartOlsen/pca-digits/blob/master/main.r
+## Excercise 2.4
+This task is about reconstructing data using PCA. First using these functions we can plot an
+image of a single cipher ( for plotting images do not convert id to data frame ):
+
+PCA loading vector - the directions in feature space along which the data vary the most
+PCA scores - projections along these directions
+
+
+``` {r important functions}
+
+# show the cipher gotten from reconstruction
+show_pca_reconstruction <- function(dataset, searched_variance){
+  
+  limit_pca_rank <- get_pcs_for_accum_variance(dataset, searched_accum_var)# how to get the components that give us the % of variance?
+  wanted_pcs <- prcomp(dataset[,(2:ncol(dataset))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
+  print(wanted_pcs)
+  print(paste0("function returns data with dimensions", dim(wanted_pcs)))
+
+  restr <- get_reconstructed_pca(wanted_pcs)
+  
+  #cipher_index <- 3*400 + 3 # get any index of a cipher - ideally show all 10 digits
+  # find indexes of digits and print them
+  #for (digit in c(0,9)){
+  #  cipher_index <- 1
+  #  while (dataset[cipher_index, ]$V1 != digit){
+  #    cipher_index <- cipher_index + 1
+  #  } 
+  #  image(get_img_rot(restr, cipher_index), col = gray(0:100/100) )
+  #}
+  image(get_img_rot(restr, cipher_index), col = gray(0:100/100) )
+}
+
+# show the first 10 eigenvectors of PCA decomposition 
+show_pca_eigenvectors <- function(dataset, searched_accum_var){
+  limit_pca_rank <- get_pcs_for_accum_variance(dataset, searched_accum_var)# how to get the components that give us the % of variance?
+  wanted_pcs <- prcomp(dataset[,(2:ncol(dataset))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
+  imageSize <- 18
+  # Plot the first 10 eigenvectors and plot as images
+  eigenVector <- 1:10
+  #wanted_pcs$rotation[,eigenVector]
+  for (e in eigenVector) {
+    imageNewM <- matrix(wanted_pcs$rotation[,e],nrow = imageSize,ncol = imageSize,byrow = FALSE)
+    print(image(imageNewM))
+  }
+}
+```
+``` {r }
+load("../data/idList-cornered-100-2021.Rdata") 
+id <- do.call(rbind, idList[1:6])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+
+shuffled_df <- id[sample(nrow(id)),]
+
+cipher_index <- 100
+image(get_img_rot(shuffled_df, cipher_index), col = gray(0:100/100) )
+#accumulated_variance_v <- c(80, 90, 95, 99)
+accumulated_variance_v <- c(80)
+for (searched_accum_var in accumulated_variance_v){
+  show_pca_reconstruction(shuffled_df, searched_accum_var)
+  show_pca_eigenvectors(shuffled_df, searched_accum_var)
+}
+```
+## 2.4.5. 
+The last exercise is to compare the outcomes between two different ciphers. For instance, two
+different ciphers, (e.g. row 43 and row 456 represent a ’0’ and a ’1’), compare the 10 first scores
+and see if you can spot a difference. Try also to calculate the mean for all 400 instances of these
+ciphers and compare the first 10 scores. Can you spot a pattern when comparing with the
+loadings
+``` {r }
+library("stats")
+# library(princomp)
+
+load("../data/idList-cornered-100-2021.Rdata") 
+id <- do.call(rbind, idList[1:6])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+
+shuffled_df <- id#[sample(nrow(id)),]
+
+wanted_pcs <- prcomp(shuffled_df[,(2:ncol(shuffled_df))], center = TRUE,scale. = TRUE)
+```
+``` {r }
+
+# compare the 10 first scores and see if you can spot a difference 
+show_pca_eigenvectors_cipher <- function(dataset, cipher_number){
+  # dataset <- dataset[cipher_number, ]
+  wanted_pcs <- prcomp(dataset[,(2:ncol(dataset))], center = TRUE,scale. = TRUE)
+  imageSize <- 18
+  # Plot the first 10 eigenvectors and plot as images
+  eigenVector <- 1:10
+  for (e in eigenVector) {
+    imageNewM <- matrix(wanted_pcs$rotation[,e],nrow = imageSize,ncol = imageSize,byrow = FALSE)
+    print(image(imageNewM))
+  }
+}
+
+show_ciphers <- c(43, 456)
+for (cipher in show_ciphers){
+  show_pca_eigenvectors_cipher(id, cipher)
+}
+
+
+```
+OK tried to do function for the second part of the exercise
+``` {r }
+
+# DITCHED THE FUNCTION TO FIRST TRY ON PAPER
+# # calculate the mean for all instances of these ciphers and compare the first 10 scores
+# get_mean_rot_200_cipher <- function(){
+#   # instead of "wanted_pcs$rotation[,e]" just put mean of pca$rotation[,e] of 400 ciphers
+#   wanted_pcs <- prcomp(dataset[,(2:ncol(dataset))], center = TRUE,scale. = TRUE)
+#   imageSize <- 18
+#   
+#   # digit 0 is from row 0 to row 200
+#   zeros_rows <- c(1:200)
+#   ones_rows <- c(201:400)
+#   
+#   rot_zero_v <- c()
+#   wanted_pcs_zero <- prcomp(dataset[zeros_rows,(2:ncol(dataset))], center = TRUE,scale. = TRUE)
+#   for (e in eigenVector) {
+#     rot_zero_v <- c(rot_zero_v, wanted_pcs$rotation[,e])
+#   }
+#   
+# }
+
+
+# digit 0 is from row 0 to row 200
+zeros_rows <- c(1:200)
+ones_rows <- c(201:400)
+
+rot_zero_v <- c()
+wanted_pcs_zero <- prcomp(id[zeros_rows,(2:ncol(id))], center = TRUE,scale. = TRUE)
+for (e in c(1:10)) {
+  rot_now <-  wanted_pcs$rotation[,e]
+  rot_zero_v <- c(rot_zero_v, mean(rot_now))
+  
+}
+imageSize <- 18
+imageNewM <- matrix(rot_zero_v,nrow = imageSize,ncol = imageSize,byrow = FALSE)
+print(image(imageNewM))
+
+```
+
+``` {r their code}
+
+# cipherNumber <- 43
+# cumPic(10)
+plot(wanted_pcs$x[43,1:10], ylim=c(-1,0.5), col="red")
+# cipherNumber <- 456
+# cumPic(10)
+plot(wanted_pcs$x[456,1:10])
+points(wanted_pcs$x[456,1:10], col="green")
+biplot(wanted_pcs[1:10])
+summary(wanted_pcs)
+
+# cipher 2
+cipherNumber <- 1001
+wanted_pcs$x[cipherNumber, 1:10]
+# cipher 0
+cipherNumber <- 400
+wanted_pcs$x[cipherNumber, 1:10]
+#Mean
+# cipher 2
+no <- 1:10
+result2 <- c()
+result2_2 <- c()
+for (a in no) {
+  result2[a] <- mean(wanted_pcs$x[801:1200, a]) 
+  result2_2[a] <- mean(wanted_pcs$rotation[, a])
+}
+result2
+#result2_2
+
+# cipher 0
+result1 <- c()
+for (a in no) {
+  result1[a] <- mean(wanted_pcs$x[1:400, a])  
+}
+result1
+```
+
+
+
+
+

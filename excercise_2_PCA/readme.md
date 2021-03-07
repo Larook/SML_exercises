@@ -8,6 +8,17 @@ https://github.com/LennartOlsen/pca-digits/blob/master/main.r
 
 OK reconstruction has just worked!
 
+
+# ASK ZOUCHI
+SHOULD WE DO THE PCA ON THE WHOLE DATASET BEFORE THE KNN?
+and then do the knnn on dataset with reduced dimensions
+The way we do it:
+	do pca on non-shuffeled dataset
+	correctly add labels to the rows
+	divide into training dataset with labels and testing with labels
+	shuffle testing and training
+	do knn
+
 ![reconstruction_proof](figures/reconstruction_proof.png)
 
 Plots need fixing!

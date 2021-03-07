@@ -270,12 +270,10 @@ get_plots_exc_2_1_all_in <- function(id_dataset){
     print(list_of_plots[2])
     #show_pca_reconstruction(shuffled_df, searched_accum_var)
   }
-  
 }
 
-
-
 # basically function does the whole exercise
+#TODO: shuffle before PCA
 get_plots_exc_2_1_disjunct <- function(id_dataset){
   set.seed(423)
   ks <- c(35, 75) #, 75) # ks <- c(5,9,13)
@@ -319,8 +317,8 @@ get_plots_exc_2_1_disjunct <- function(id_dataset){
       train_df <- train_df[,c(ncol(train_df),1:(ncol(train_df)-1))]
       
       # shuffle joint data
-      test_df <- test_df[sample(nrow(test_df)),]
-      train_df <- train_df[sample(nrow(train_df)),]
+      #test_df <- test_df[sample(nrow(test_df)),]
+      #train_df <- train_df[sample(nrow(train_df)),]
       
       plot_data <- knn_get_pca_plot_data(test_data=test_df[2:ncol(test_df)], test_labels=test_df$label, train_data=train_df[2:ncol(test_df)], train_labels=train_df$label, repetitions=10, k=k_now, searched_accum_var=searched_accum_var)
       #print(plot_data)
@@ -333,16 +331,15 @@ get_plots_exc_2_1_disjunct <- function(id_dataset){
     print(list_of_plots[2])
     #show_pca_reconstruction(shuffled_df, searched_accum_var)
   }
-  
 }
-
 ```
+
 
 ``` {r disjunct}
 
 # Disjunct
 load("../data/idList-cornered-100-2021.Rdata") 
-id <- do.call(rbind, idList[1:10])
+id <- do.call(rbind, idList[1:6])
 id <- as.data.frame(id)
 id$V1 <- factor(id$V1)
 # id - huge dataframe with everyone
