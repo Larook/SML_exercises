@@ -12,7 +12,13 @@ OK reconstruction has just worked!
 
 Plots need fixing!
 
-![plots_for_fixing](figures/knn_plotting.png)
+ALL-IN data
+
+![plots_for_fixing](figures/knn_plotting_allin.png)
+
+DISJUNCT data
+
+![plots_for_fixing](figures/knn_plotting_disjunct.png)
 
 
 TODO: 
