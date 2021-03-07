@@ -229,29 +229,17 @@ plot_results <- function(plot_data_ks_l){
 }
 
 # basically function does the whole exercise
-get_plots_exc_2_1 <- function(id_dataset, is_disjunct){
+get_plots_exc_2_1_all_in <- function(id_dataset){
   set.seed(423)
-  ks <- c(15, 35)# 75) #, 75) # ks <- c(5,9,13)
+  ks <- c(35, 75) #, 75) # ks <- c(5,9,13)
   accumulated_variance_v <- c(80)#, 90, 95, 99)
   
   shuffled_df <- id_dataset[sample(nrow(id_dataset)),]
   
   # split 50/50
-  test_rows_id <- c()
-  train_rows_id <- c()
-  if (is_disjunct == TRUE){
-      rows_per_digit <- 200
-      rows_per_person <- 10 * rows_per_digit
-      
-      test_rows_id <- 1:(rows_per_person*floor(length(idList)/2))
-      train_rows_id <- (rows_per_person*floor(length(idList)/2) + 1) : nrow(shuffled_df)
-      
-      print("test_rows_id :")
-      print(test_rows_id)
-    } else {
-      test_rows_id <- 1:(nrow(shuffled_df)/2)
-      train_rows_id <- ((nrow(shuffled_df)/2) + 1) :nrow(shuffled_df)
-    }
+  test_rows_id <- 1:(nrow(shuffled_df)/2)
+  train_rows_id <- ((nrow(shuffled_df)/2) + 1) :nrow(shuffled_df)
+  
   
   
   for (searched_accum_var in accumulated_variance_v){
@@ -284,32 +272,95 @@ get_plots_exc_2_1 <- function(id_dataset, is_disjunct){
   }
   
 }
+
+
+
+# basically function does the whole exercise
+get_plots_exc_2_1_disjunct <- function(id_dataset){
+  set.seed(423)
+  ks <- c(35, 75) #, 75) # ks <- c(5,9,13)
+  accumulated_variance_v <- c(80)#, 90, 95, 99)
+  
+  shuffled_df_truly <- id_dataset[sample(nrow(id_dataset)),]
+  shuffled_df <- id_dataset
+  
+  # split 50/50 in terms of people
+  rows_per_digit <- 200
+  rows_per_person <- 10 * rows_per_digit
+  
+  train_data_limit <- floor(nrow(id_dataset)/2)
+  
+  test_rows_id <- 1:(train_data_limit)
+  train_rows_id <- (train_data_limit + 1) : nrow(id_dataset)
+
+  for (searched_accum_var in accumulated_variance_v){
+    # how to get the components that give us the % of variance?
+    limit_pca_rank <- get_pcs_for_accum_variance(shuffled_df, searched_accum_var)
+    
+    # get pcs
+    wanted_pcs <- prcomp(shuffled_df[,(2:ncol(shuffled_df))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
+    
+    plot_data_ks_l <- list()
+    for (k_now in ks){
+  
+      test_df <- as.data.frame(wanted_pcs$x[test_rows_id,]) 
+      train_df <- as.data.frame(wanted_pcs$x[train_rows_id,])
+      
+      # get the labels - supervision part
+      id_test_labels <- shuffled_df[test_rows_id, 1]
+      id_train_labels <- shuffled_df[train_rows_id, 1]
+      
+      # join labels with data - labels go as the last column
+      test_df$label <- id_test_labels 
+      train_df$label <- id_train_labels 
+      
+      # get the labels as the first column
+      test_df <- test_df[,c(ncol(test_df),1:(ncol(test_df)-1))]
+      train_df <- train_df[,c(ncol(train_df),1:(ncol(train_df)-1))]
+      
+      # shuffle joint data
+      test_df <- test_df[sample(nrow(test_df)),]
+      train_df <- train_df[sample(nrow(train_df)),]
+      
+      plot_data <- knn_get_pca_plot_data(test_data=test_df[2:ncol(test_df)], test_labels=test_df$label, train_data=train_df[2:ncol(test_df)], train_labels=train_df$label, repetitions=10, k=k_now, searched_accum_var=searched_accum_var)
+      #print(plot_data)
+      plot_data_ks_l <- append(plot_data_ks_l, list(plot_data))
+      
+    }
+    
+    list_of_plots <- plot_results(plot_data_ks_l)
+    print(list_of_plots[1])
+    print(list_of_plots[2])
+    #show_pca_reconstruction(shuffled_df, searched_accum_var)
+  }
+  
+}
+
 ```
 
 ``` {r disjunct}
-# All persons in
-#load("../data/idList-co-100.Rdata")  
+
+# Disjunct
 load("../data/idList-cornered-100-2021.Rdata") 
-id <- do.call(rbind, idList[1:2])
+id <- do.call(rbind, idList[1:10])
 id <- as.data.frame(id)
 id$V1 <- factor(id$V1)
-# id - huge dataframe with everyone as TRAINING
+# id - huge dataframe with everyone
 
-get_plots_exc_2_1(id_dataset=id, is_disjunct=TRUE)
+get_plots_exc_2_1_disjunct(id_dataset=id)
 ```
 
 
 
 ``` {r all persons in}
 # All persons in
-#load("../data/idList-co-100.Rdata")  
 load("../data/idList-cornered-100-2021.Rdata") 
-id <- do.call(rbind, idList)
+id <- do.call(rbind, idList[1:10])
 id <- as.data.frame(id)
 id$V1 <- factor(id$V1)
 # id - huge dataframe with everyone as TRAINING
 
-get_plots_exc_2_1(id_dataset=id, is_disjunct=FALSE)
+get_plots_exc_2_1_all_in(id_dataset=id)
 ```
 
 
@@ -319,7 +370,7 @@ get_plots_exc_2_1(id_dataset=id, is_disjunct=FALSE)
 
 # SINGLE PERSON DATA
 load("../data/id100.Rda")
-get_plots_exc_2_1(id_dataset=id, is_disjunct=FALSE)
+get_plots_exc_2_1_all_in(id_dataset=id)
 
 ```
 
