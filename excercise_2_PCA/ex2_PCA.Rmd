@@ -114,7 +114,10 @@ get_accuracy <- function(predicted_labels, test_labels){
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 
+=======
+>>>>>>> d3ed411afdec455d6774e06ef77852b535ba1d9b
 =======
 >>>>>>> d3ed411afdec455d6774e06ef77852b535ba1d9b
 knn_get_plot_data <- function(test_data, test_labels, train_data, train_labels, repetitions = 10, k, searched_accum_var){
@@ -156,6 +159,11 @@ knn_get_plot_data <- function(test_data, test_labels, train_data, train_labels, 
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> d3ed411afdec455d6774e06ef77852b535ba1d9b
 =======
 
 
@@ -268,6 +276,7 @@ train_rows_id <- ((nrow(shuffled_df)/2) + 1) :nrow(shuffled_df)
 df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = TRUE, rank.=21)
 # take only .x and add labels
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 id_labels <- shuffled_df[, 1]
 df_reduced <- join_labels_data_dataframe(labels=id_labels , data=as.data.frame(df_pca$x))
@@ -375,6 +384,15 @@ df_reduced <- join_labels_data_dataframe(labels=id_labels , data=as.data.frame(d
 
 ``` {r }
 >>>>>>> d3ed411afdec455d6774e06ef77852b535ba1d9b
+=======
+
+id_labels <- shuffled_df[, 1]
+df_reduced <- join_labels_data_dataframe(labels=id_labels , data=as.data.frame(df_pca$x))
+
+```
+
+``` {r }
+>>>>>>> d3ed411afdec455d6774e06ef77852b535ba1d9b
 ## Apply KNN with 10 fold Cross-Validation-----------------------------------------------
 # for every fold check all the K's
 ks <- c(17,35,55)
@@ -443,6 +461,8 @@ for each k
   do 10 folds
   save average from 10 folds
 plot
+
+
 
 
 
