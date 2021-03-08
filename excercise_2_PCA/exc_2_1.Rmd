@@ -263,6 +263,7 @@ df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = T
 #df_pca <- prcomp(id[,(2:ncol(id))], center = TRUE,scale. = TRUE)
 pca_sum <- summary(df_pca)
 #print(pca_sum$x)
+# ADD LABELS TO DF_PCA
 
 
 cipher_index <- 100
@@ -301,6 +302,8 @@ for (searched_accum_var in accumulated_variance_v){
 
 
 ## 2.1.3 Measure run times for the prediction step of the kNN-classifier with PCA based dimensionality reduction. How does the feature vector dimensionality effect performance?
+
+
 
 ## 2.1.4 Interpret the results.
 Shouldn't it be answered by the plots?

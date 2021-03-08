@@ -45,7 +45,7 @@ print_plots_pca <- function(data){
 
 #From Karol's code: 
 # All persons in
-load ("data/idList-co-100.Rdata") 
+load ("../data/idList-co-100.Rdata") 
 id <- do.call(rbind, idList[1:10])
 id <- as.data.frame(id)
 id$V1 <- factor(id$V1)
@@ -113,8 +113,22 @@ get_accuracy <- function(predicted_labels, test_labels){
   sum(diag(tab)/(sum(rowSums(tab)))) * 100
 }
 
-knn_get_pca_plot_data <- function(test_data, test_labels, train_data, train_labels, repetitions = 10, k, searched_accum_var){
+<<<<<<< HEAD
+
+=======
+>>>>>>> d3ed411afdec455d6774e06ef77852b535ba1d9b
+knn_get_plot_data <- function(test_data, test_labels, train_data, train_labels, repetitions = 10, k, searched_accum_var){
       
+  print("hello from function")
+  print("test_data")
+  print(dim(test_data))
+  print("test_labels")
+  print(dim(test_labels))
+  print("train_data")
+  print(dim(train_data))
+  print("train_labels")
+  print(dim(train_labels))
+  
     test_time_v <- c()
     test_accuracy_v <- c()
     train_accuracy_v <- c()
@@ -141,7 +155,11 @@ knn_get_pca_plot_data <- function(test_data, test_labels, train_data, train_labe
     return(list("searched_accum_var"=searched_accum_var, "k"=k,"test_time_v"=test_time_v, "test_accuracy_v"=test_accuracy_v, "train_accuracy_v"=train_accuracy_v))
 }
 
-# Plot all the results given the data
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> d3ed411afdec455d6774e06ef77852b535ba1d9b
 plot_results <- function(plot_data_ks_l){
   ks <- c()
   exec_time_means <- c()
@@ -202,19 +220,22 @@ plot_results <- function(plot_data_ks_l){
 ```
 
 
-TODO: 
-- change number of K's used 
-- Use different dataset for this (New one with best parameter from 2.1 from Karol)
-    80% variance with lower K values are the fastest
-- Use All persons-in and Disjunct (Both? one?)
-
 ## 2.2 Normalization
 ## Min-Max Normalization Before PCA 
 ``` {r}
 
+join_labels_data_dataframe <- function(labels, data){
+  # join labels with data - labels go as the last column
+  data$label <- labels 
+  # get the labels as the first column
+  data <- data[,c(ncol(data),1:(ncol(data)-1))]
+  return(data)
+}
+
 
 # All persons in
-load("../data/idList-co-100.Rdata")
+# load("../data/idList-co-100.Rdata")  
+load("../data/idList-cornered-100-2021.Rdata") 
 id <- do.call(rbind, idList[1:10])
 id <- as.data.frame(id)
 id$V1 <- factor(id$V1)
@@ -226,11 +247,17 @@ normalize <- function(x) {
  return((x-min(x))/ (max(x)- min(x)))
 }
 
+# DO NORMALIZATION
 shuffled_df <- as.data.frame(lapply(id[,c(2:325)], normalize))
+origin_labels <- id$V1
+origin_data <- id[,c(2:325)]
+normalized_data <- as.data.frame(lapply(origin_data, normalize))
+
+shuffled_df <- join_labels_data_dataframe(labels=origin_labels , data=normalized_data)
 
 ##Shuffling the data-------------------------------------------------------------------
 set.seed(423)
-shuffled_df <- id[sample(nrow(id)),]
+shuffled_df <- shuffled_df[sample(nrow(shuffled_df)),]
 accumulated_variance_v <- c(80) ## Karol said 80% fastest
 
 #Split 50/50
@@ -238,16 +265,123 @@ test_rows_id <- 1:(nrow(shuffled_df)/2)
 train_rows_id <- ((nrow(shuffled_df)/2) + 1) :nrow(shuffled_df)
 
 ##PCA------------------------------------------------------------------------------------
-df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = TRUE)
+df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = TRUE, rank.=21)
+# take only .x and add labels
+<<<<<<< HEAD
 
+id_labels <- shuffled_df[, 1]
+df_reduced <- join_labels_data_dataframe(labels=id_labels , data=as.data.frame(df_pca$x))
+
+```
+
+```{r based on exc1 cross validation}
+
+
+
+# for every fold check all the ks
+ks <- c(1,5)#,9,13,17,21,25,29)
+mse_k_all_folds_avg <- rep(0, length(ks)) # vector for storing error of each k 
+
+# k_exec_time_v <- c()
+# k_exec_time_stds <- rep(0, length(ks))
+
+# k_test_accuracy_v <- c()
+# k_test_accuracy_stds <- rep(0, length(ks))
+
+# k_train_accuracy_v <- c()
+# k_train_accuracy_stds <- rep(0, length(ks))
+
+# do the folds
+folds <- createFolds(df_reduced$label, k = 10)
+
+fold_no <- 0 # just for printing the progress
+
+#current fold - to ignore in training data but to use as a validation dataset: fold -> test!
+for (fold in folds){
+  fold_no <- fold_no + 1
+  #print(paste0("fold_no =", fold_no))
+  
+  fold <- sample(fold) # shuffle id numbers of fold 
+  
+  # use not-fold data as training and fold data as test
+  not_f_df <- df_reduced[ -fold, ]
+  f_df <- df_reduced[ fold, ]
+  
+  # get labels 
+  f_train_labels <- not_f_df[,1]
+  f_test_labels <- f_df[,1]
+  
+  # predict with knn - test all k's for each fold
+
+  k_no <- 0 # just to keep track
+  k_error <- 0
+  for (k in ks){
+    k_no <- k_no + 1
+    f_test_pred <- knn(train = not_f_df[,c(2:ncol(not_f_df))], test = f_df[,c(2:ncol(f_df))], cl = f_train_labels, k=k)
+    
+    k_error <- mean(f_test_labels != f_test_pred) # error of current k in this fold
+    #print(paste0("      k =", k, " k_error =", k_error))
+    #print( mse_k_all_folds_avg) # Error vector that we want to plot
+    
+    # we just want to plot the results so we came up with idea of saving the errors in vector
+    # for each k in the vector all the folds are summed up together, and then we get the average
+    mse_k_all_folds_avg[k_no] <- mse_k_all_folds_avg[k_no] + k_error
+    
+    ######################
+    # get the prediction
+    t_start <- as.numeric(proc.time())
+    numbers_test_pred <- knn(train = not_f_df[,c(2:ncol(not_f_df))], test = f_df[,c(2:ncol(f_df))], cl = f_train_labels, k=k)
+    t_end <- as.numeric(proc.time())
+    delta_t <- (t_end -  t_start)[3]  # seconds
+    #test_time_v <- c(test_time_v, delta_t)
+    # k_exec_time_v[k_no] <- c(k_exec_time_v[k_no], delta_t)
+    #print(test_time_v)
+    
+    # see the performance on testing data
+    k_accuracy_test <-get_accuracy(f_test_labels, numbers_test_pred)
+    # test_accuracy_v <- c(test_accuracy_v, k_accuracy_test)
+    # k_test_accuracy_v[k_no] <- c(k_test_accuracy_v[k_no], k_accuracy_test)
+    
+    # check the performance on testing data
+    numbers_train_pred <- knn(train = not_f_df[,c(2:ncol(not_f_df))], test = not_f_df[,c(2:ncol(f_df))], cl = f_train_labels, k=k)
+    k_accuracy_train <-get_accuracy(f_train_labels, numbers_train_pred)
+    # train_accuracy_v <- c(train_accuracy_v, k_accuracy_train)
+    # k_train_accuracy_v[k_no] <- c(k_train_accuracy_v[k_no], k_accuracy_train)
+    
+    # do list - save everything
+    data_from_knn<- list("fold_no"=fold_no, "k"=k, "delta_t"=delta_t, "k_accuracy_test"=k_accuracy_test, "k_accuracy_train"=k_accuracy_train )
+    data_from_knn_l <- append(data_from_knn, data_from_knn)
+  }
+}
+# mse_k_all_folds_avg <- mse_k_all_folds_avg / length(folds)
+
+
+# calculate means and sdevs
+
+
+#print(paste0("mse_k_all_folds_avg = ", mse_k_all_folds_avg))
+plot(ks, mse_k_all_folds_avg, type="o", ylab="missclassification error", main="each k had checked the folds")
+
+```
+
+``` {r was working with the plotting function which had to be changed}
+
+=======
+
+id_labels <- shuffled_df[, 1]
+df_reduced <- join_labels_data_dataframe(labels=id_labels , data=as.data.frame(df_pca$x))
+
+```
+
+``` {r }
+>>>>>>> d3ed411afdec455d6774e06ef77852b535ba1d9b
 ## Apply KNN with 10 fold Cross-Validation-----------------------------------------------
-
 # for every fold check all the K's
-ks <- c(1,17,29)
+ks <- c(17,35,55)
 mse_k_all_folds_avg <- rep(0, length(ks)) # vector for storing error of each k 
 
 # do the folds
-folds <- createFolds(df_pca, k = 10)
+folds <- createFolds(df_reduced$label, k = 10)
 fold_no <- 0 # just for printing the progress
 
 #current fold - to ignore in training data but to use as a validation dataset: fold -> test!
@@ -255,33 +389,46 @@ for (fold in folds){
   fold_no <- fold_no + 1
         print(paste0("fold_no =", fold_no))
         
+# # use not-fold data as training and fold data as test
+# not_f_df <- shuffled_df[ -fold, ]
+# f_df <- shuffled_df[ fold, ]
+# 
+# # get labels 
+# f_train_labels <- not_f_df[,1]
+# f_test_labels <- f_df[,1]
+# 
+# f_test_pred <- knn(train = not_f_df[,c(2:325)], test = f_df[,c(2:325)], cl = f_train_labels, k=k)
+        
         fold <- sample(fold) # shuffle id numbers of fold 
         
         # use not-fold data as training and fold data as test
-        not_f_df <- df_pca$x[ -fold,] #training data
-        f_df <- df_pca$x[ fold,] #test data
-        
-        #not_f_df <- shuffled_df[ -fold, ] #training data
-        #f_df <- shuffled_df[ fold, ] #test data
+        not_f_df <- df_reduced[ -fold,] #training data
+        f_df <- df_reduced[ fold,] #test data
         
         # get labels - supervision part
-        f_train_labels <- shuffled_df[train_rows_id, 1]
-        f_test_labels <- shuffled_df[test_rows_id, 1]
-  
-  # predict with KNN - test all k's for each fold
-  k_no <- 0 # just to keep track
-  k_error <- 0
-  plot_data_ks_l <- list()
+        f_train_labels <- not_f_df[, 1]
+        f_test_labels <- f_df[, 1]
+        print(f_train_labels)
+        print(f_test_labels)
+        
+        numbers_test_pred <- knn(train = not_f_df[,(2:ncol(not_f_df))], test = f_df[,(2:ncol(f_df))], cl = not_f_df[, 1], k=1)
+        
+        # predict with KNN - test all k's for each fold
+        k_no <- 0 # just to keep track
+        k_error <- 0
+        plot_data_ks_l <- list()
         for (k in ks){
             k_no <- k_no + 1
-            
-            f_test_pred <- knn(train = not_f_df, test = f_df, cl = f_train_labels, k=k)
-            
-            print(paste0("      k =", k))
-            plot_data <- knn_get_pca_plot_data(test_data=f_df, test_labels=f_test_labels,
-                                               train_data=not_f_df, train_labels=f_train_labels,
-                                               repetitions=10, k=k, searched_accum_var=searched_accum_var)
-            #print(plot_data)
+            print(paste0("      k =", k, " k_no=", k))
+    
+            # numbers_test_pred <- knn(train = train_data_fun, test = test_data_fun, cl = f_train_labels, k=k)
+
+            plot_data <- knn_get_plot_data(test_data=f_df[,(2:ncol(f_df))], 
+                                               test_labels=f_df[, 1],
+                                               train_data=not_f_df[,(2:ncol(not_f_df))], 
+                                               train_labels=not_f_df[, 1],
+                                               repetitions=10, k=k, searched_accum_var=80)
+            print(plot_data)
             plot_data_ks_l <- append(plot_data_ks_l, list(plot_data))
         }
   
@@ -292,6 +439,14 @@ for (fold in folds){
     #show_pca_reconstruction(shuffled_df, searched_accum_var)
 }
 ```
+for each k
+  do 10 folds
+  save average from 10 folds
+plot
+
+
+
+
 
 
 ## Min-Max Normalization After PCA
@@ -363,9 +518,9 @@ for (fold in folds){
             f_test_pred <- knn(train = not_f_df[,c(2:325)], test = f_df[,c(2:325)], cl = f_train_labels, k=k)
             
             print(paste0("      k =", k))
-            plot_data <- knn_get_pca_plot_data(test_data=f_df, test_labels=f_test_labels,
+            plot_data <- knn_get_plot_data(test_data=f_df, test_labels=f_test_labels,
                                                train_data=not_f_df, train_labels=f_train_labels,
-                                               repetitions=10, k=k, searched_accum_var=searched_accum_var)
+                                               repetitions=10, k=k)
             #print(plot_data)
             plot_data_ks_l <- append(plot_data_ks_l, list(plot_data))
         }
