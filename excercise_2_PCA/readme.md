@@ -84,5 +84,6 @@ TODO:
 plotting eigenvectors as images
 Maybe 2.4.3 will be difficult
 how to re-recreate -> checking how data size was reduced etc
+https://github.com/Spiderixius/SML-Exercises/tree/master/admur13_exercise2
 
 
