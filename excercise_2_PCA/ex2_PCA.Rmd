@@ -222,11 +222,11 @@ id$V1 <- factor(id$V1)
 
 # Normalizing numeric data--------------------------------------------------------------
 
-#normalize <- function(x) {
-# return((x-min(x))/ (max(x)- min(x)))
-#}
+normalize <- function(x) {
+ return((x-min(x))/ (max(x)- min(x)))
+}
 
-#shuffled_df <- as.data.frame(lapply(id[,c(2:325)], normalize))
+shuffled_df <- as.data.frame(lapply(id[,c(2:325)], normalize))
 
 ##Shuffling the data-------------------------------------------------------------------
 set.seed(423)
@@ -275,7 +275,7 @@ for (fold in folds){
         for (k in ks){
             k_no <- k_no + 1
             
-            f_test_pred <- knn(train = not_f_df[,c(2:325)], test = f_df[,c(2:325)], cl = f_train_labels, k=k)
+            f_test_pred <- knn(train = not_f_df, test = f_df, cl = f_train_labels, k=k)
             
             print(paste0("      k =", k))
             plot_data <- knn_get_pca_plot_data(test_data=f_df, test_labels=f_test_labels,
