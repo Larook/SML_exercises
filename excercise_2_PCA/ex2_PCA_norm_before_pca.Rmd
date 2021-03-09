@@ -199,14 +199,6 @@ print(plots[2])
 
 ``` {r was working with the plotting function which had to be changed}
 
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-=======
->>>>>>> d3ed411afdec455d6774e06ef77852b535ba1d9b
-=======
->>>>>>> d3ed411afdec455d6774e06ef77852b535ba1d9b
 knn_get_plot_data <- function(test_data, test_labels, train_data, train_labels, repetitions = 10, k, searched_accum_var){
       
   print("hello from function")
@@ -245,19 +237,7 @@ knn_get_plot_data <- function(test_data, test_labels, train_data, train_labels, 
     return(list("searched_accum_var"=searched_accum_var, "k"=k,"test_time_v"=test_time_v, "test_accuracy_v"=test_accuracy_v, "train_accuracy_v"=train_accuracy_v))
 }
 
-<<<<<<< HEAD:excercise_2_PCA/ex2_PCA_norm_before_pca.Rmd
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
 
-
->>>>>>> d3ed411afdec455d6774e06ef77852b535ba1d9b
-=======
-
-
->>>>>>> d3ed411afdec455d6774e06ef77852b535ba1d9b
->>>>>>> f9f254bfdff064ed46b259c06f1cb07cbc08ccff:excercise_2_PCA/ex2_PCA.Rmd
 plot_results <- function(plot_data_ks_l){
   ks <- c()
   exec_time_means <- c()
@@ -316,12 +296,6 @@ plot_results <- function(plot_data_ks_l){
 }
 
 
-
-
-
-<<<<<<< HEAD:excercise_2_PCA/ex2_PCA_norm_before_pca.Rmd
-
-=======
 # All persons in
 # load("../data/idList-co-100.Rdata")  
 load("../data/idList-cornered-100-2021.Rdata") 
@@ -356,8 +330,6 @@ train_rows_id <- ((nrow(shuffled_df)/2) + 1) :nrow(shuffled_df)
 ##PCA------------------------------------------------------------------------------------
 df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = TRUE, rank.=21)
 # take only .x and add labels
-<<<<<<< HEAD
-<<<<<<< HEAD
 
 id_labels <- shuffled_df[, 1]
 df_reduced <- join_labels_data_dataframe(labels=id_labels , data=as.data.frame(df_pca$x))
@@ -456,7 +428,6 @@ plot(ks, mse_k_all_folds_avg, type="o", ylab="missclassification error", main="e
 
 ``` {r was working with the plotting function which had to be changed}
 
-=======
 
 id_labels <- shuffled_df[, 1]
 df_reduced <- join_labels_data_dataframe(labels=id_labels , data=as.data.frame(df_pca$x))
@@ -464,8 +435,7 @@ df_reduced <- join_labels_data_dataframe(labels=id_labels , data=as.data.frame(d
 ```
 
 ``` {r }
->>>>>>> d3ed411afdec455d6774e06ef77852b535ba1d9b
-=======
+
 
 id_labels <- shuffled_df[, 1]
 df_reduced <- join_labels_data_dataframe(labels=id_labels , data=as.data.frame(df_pca$x))
@@ -473,8 +443,7 @@ df_reduced <- join_labels_data_dataframe(labels=id_labels , data=as.data.frame(d
 ```
 
 ``` {r }
->>>>>>> d3ed411afdec455d6774e06ef77852b535ba1d9b
->>>>>>> f9f254bfdff064ed46b259c06f1cb07cbc08ccff:excercise_2_PCA/ex2_PCA.Rmd
+
 ## Apply KNN with 10 fold Cross-Validation-----------------------------------------------
 # for every fold check all the K's
 ks <- c(17,35,55)
@@ -543,14 +512,6 @@ for each k
   do 10 folds
   save average from 10 folds
 plot
-<<<<<<< HEAD:excercise_2_PCA/ex2_PCA_norm_before_pca.Rmd
-=======
-
-
-
-
->>>>>>> f9f254bfdff064ed46b259c06f1cb07cbc08ccff:excercise_2_PCA/ex2_PCA.Rmd
-
 
 
 
