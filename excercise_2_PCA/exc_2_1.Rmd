@@ -32,20 +32,21 @@ print_plots_pca <- function(data){
   
 
   # my previous tries before remarks from Zouchi
-  print(pca_sum$importance[,1:20])
-  pca_std_variance <- pca_sum$importance[1,1:20]
-  plot(pca_std_variance, main="standard deviation of first 20 PCAs")
+  print(pca_sum$importance[,1:30])
+  pca_std_variance <- pca_sum$importance[1,1:30]
+  plot(x=c(1:30), y=pca_std_variance, xlab="principal components", ylab="standard deviation", main="standard deviation of first 30 PCAs")
   
-  pca_proportion_of_variance <- pca_sum$importance[2,1:20]
-  plot(pca_proportion_of_variance, main="proportion of variance of first 20 PCAs")
-  
-  pca_cumulative_proportion <- pca_sum$importance[3,1:20]
-  plot(pca_cumulative_proportion, main="cumulative proportion first 20 PCAs")
+  pca_proportion_of_variance <- pca_sum$importance[2,1:30]
+  plot(x=c(1:30), y=pca_proportion_of_variance, xlab="principal components", ylab="proportion of variance", main="proportion of variance of first 30 PCAs")
+
+  pca_cumulative_proportion <- pca_sum$importance[3,1:30]
+  plot(x=c(1:30), y=pca_cumulative_proportion, xlab="principal components", ylab="cumulative proportion" , main="cumulative proportion first 30 PCAs")
 }
 
 
 # All persons in
-load("../data/idList-co-100.Rdata")
+# load("../data/idList-co-100.Rdata")
+load("../data/idList-cornered-100-2021.Rdata") 
 id <- do.call(rbind, idList[1:10])
 id <- as.data.frame(id)
 id$V1 <- factor(id$V1)
@@ -229,10 +230,9 @@ plot_results <- function(plot_data_ks_l){
 }
 
 # basically function does the whole exercise
-get_plots_exc_2_1_all_in <- function(id_dataset){
+get_plots_exc_2_1_all_in <- function(id_dataset, ks, accumulated_variance_v){
+  list_of_plots <- list()
   set.seed(423)
-  ks <- c(35, 75) #, 75) # ks <- c(5,9,13)
-  accumulated_variance_v <- c(80)#, 90, 95, 99)
   
   shuffled_df <- id_dataset[sample(nrow(id_dataset)),]
   
@@ -248,7 +248,6 @@ get_plots_exc_2_1_all_in <- function(id_dataset){
     
     # get pcs
     wanted_pcs <- prcomp(shuffled_df[,(2:ncol(shuffled_df))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
-    
     plot_data_ks_l <- list()
     for (k_now in ks){
   
@@ -265,20 +264,21 @@ get_plots_exc_2_1_all_in <- function(id_dataset){
       
     }
     
-    list_of_plots <- plot_results(plot_data_ks_l)
-    print(list_of_plots[1])
-    print(list_of_plots[2])
+    list_of_plots <- append(list_of_plots, plot_results(plot_data_ks_l))
+    # print(list_of_plots[1])
+    # print(list_of_plots[2])
     #show_pca_reconstruction(shuffled_df, searched_accum_var)
+    return(list_of_plots)
   }
 }
 
 # basically function does the whole exercise
 #TODO: shuffle before PCA
-get_plots_exc_2_1_disjunct <- function(id_dataset){
+get_plots_exc_2_1_disjunct <- function(id_dataset, ks, accumulated_variance_v){
   set.seed(423)
-  ks <- c(35, 75) #, 75) # ks <- c(5,9,13)
-  accumulated_variance_v <- c(80)#, 90, 95, 99)
-  
+  # ks <- c(49,59,69,79) #c(35, 75) #, 75) # ks <- c(5,9,13)
+  # accumulated_variance_v <- c(80, 90, 95, 99)
+  list_of_plots <- list()
   shuffled_df_truly <- id_dataset[sample(nrow(id_dataset)),]
   shuffled_df <- id_dataset
   
@@ -326,10 +326,12 @@ get_plots_exc_2_1_disjunct <- function(id_dataset){
       
     }
     
-    list_of_plots <- plot_results(plot_data_ks_l)
-    print(list_of_plots[1])
-    print(list_of_plots[2])
+    # list_of_plots <- plot_results(plot_data_ks_l)
+    # print(list_of_plots[1])
+    # print(list_of_plots[2])
     #show_pca_reconstruction(shuffled_df, searched_accum_var)
+    list_of_plots <- append(list_of_plots, plot_results(plot_data_ks_l))
+    return(list_of_plots)
   }
 }
 ```
@@ -339,12 +341,16 @@ get_plots_exc_2_1_disjunct <- function(id_dataset){
 
 # Disjunct
 load("../data/idList-cornered-100-2021.Rdata") 
-id <- do.call(rbind, idList[1:6])
+id <- do.call(rbind, idList[1:10])
 id <- as.data.frame(id)
 id$V1 <- factor(id$V1)
 # id - huge dataframe with everyone
 
-get_plots_exc_2_1_disjunct(id_dataset=id)
+ks <- c(39,49,59)#,69,79) #c(35, 75) #, 75) # ks <- c(5,9,13)
+accumulated_variance_v <- c(80, 90)#, 95, 99)
+list_of_plots_disjunct <- get_plots_exc_2_1_disjunct(id_dataset=id, ks=ks, accumulated_variance_v=accumulated_variance_v)
+print(list_of_plots_disjunct[1])
+print(list_of_plots_disjunct[2])
 ```
 
 
@@ -357,7 +363,11 @@ id <- as.data.frame(id)
 id$V1 <- factor(id$V1)
 # id - huge dataframe with everyone as TRAINING
 
-get_plots_exc_2_1_all_in(id_dataset=id)
+ks <- c(39,49,59) #c(35, 75) #, 75) # ks <- c(5,9,13)
+accumulated_variance_v <- c(80, 90, 95, 99)
+list_of_plots_all_in <- get_plots_exc_2_1_all_in(id_dataset=id, ks=ks, accumulated_variance_v=accumulated_variance_v)
+print(list_of_plots_all_in[1])
+print(list_of_plots_all_in[2])
 ```
 
 

@@ -32,15 +32,15 @@ print_plots_pca <- function(data){
   
 
   # my previous tries before remarks from Zouchi
-  print(pca_sum$importance[,1:20])
-  pca_std_variance <- pca_sum$importance[1,1:20]
-  plot(pca_std_variance, main="standard deviation of first 20 PCAs")
+  print(pca_sum$importance[,1:30])
+  pca_std_variance <- pca_sum$importance[1,1:30]
+  plot(pca_std_variance, main="standard deviation of first 30 PCAs")
   
-  pca_proportion_of_variance <- pca_sum$importance[2,1:20]
-  plot(pca_proportion_of_variance, main="proportion of variance of first 20 PCAs")
+  pca_proportion_of_variance <- pca_sum$importance[2,1:30]
+  plot(pca_proportion_of_variance, main="proportion of variance of first 30 PCAs")
   
   pca_cumulative_proportion <- pca_sum$importance[3,1:20]
-  plot(pca_cumulative_proportion, main="cumulative proportion first 20 PCAs")
+  plot(pca_cumulative_proportion, main="cumulative proportion first 30 PCAs")
 }
 
 
@@ -146,7 +146,7 @@ show_pca_reconstruction <- function(dataset, searched_variance){
   
   limit_pca_rank <- get_pcs_for_accum_variance(dataset, searched_accum_var)# how to get the components that give us the % of variance?
   wanted_pcs <- prcomp(dataset[,(2:ncol(dataset))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
-  print(wanted_pcs)
+  #print(wanted_pcs)
   print(paste0("function returns data with dimensions", dim(wanted_pcs)))
 
   restr <- get_reconstructed_pca(wanted_pcs)
@@ -160,7 +160,7 @@ show_pca_reconstruction <- function(dataset, searched_variance){
   #  } 
   #  image(get_img_rot(restr, cipher_index), col = gray(0:100/100) )
   #}
-  image(get_img_rot(restr, cipher_index), col = gray(0:100/100) )
+  print(image(get_img_rot(restr, cipher_index), col = gray(0:100/100), xlab = paste("reconstructed with ", searched_accum_var, "% variance") ))
 }
 
 # show the first 10 eigenvectors of PCA decomposition 
@@ -186,11 +186,11 @@ show_pca_eigenvectors <- function(dataset, searched_accum_var){
 
 cipher_index <- 100
 image(get_img_rot(shuffled_df, cipher_index), col = gray(0:100/100) )
-#accumulated_variance_v <- c(80, 90, 95, 99)
-accumulated_variance_v <- c(80)
+accumulated_variance_v <- c(80, 90, 95, 99)
+# accumulated_variance_v <- c(80)
 for (searched_accum_var in accumulated_variance_v){
-  #show_pca_reconstruction(shuffled_df, searched_accum_var)
-  show_pca_eigenvectors(shuffled_df, searched_accum_var)
+  show_pca_reconstruction(shuffled_df, searched_accum_var)
+  #show_pca_eigenvectors(shuffled_df, searched_accum_var)
 }
 ```
 
