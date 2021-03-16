@@ -8,11 +8,28 @@ https://github.com/LennartOlsen/pca-digits/blob/master/main.r
 
 OK reconstruction has just worked!
 
+
+# ASK ZOUCHI
+SHOULD WE DO THE PCA ON THE WHOLE DATASET BEFORE THE KNN?
+and then do the knnn on dataset with reduced dimensions
+The way we do it:
+	do pca on non-shuffeled dataset
+	correctly add labels to the rows
+	divide into training dataset with labels and testing with labels
+	shuffle testing and training
+	do knn
+
 ![reconstruction_proof](figures/reconstruction_proof.png)
 
 Plots need fixing!
 
-![plots_for_fixing](figures/knn_plotting.png)
+ALL-IN data
+
+![plots_for_fixing](figures/knn_plotting_allin.png)
+
+DISJUNCT data
+
+![plots_for_fixing](figures/knn_plotting_disjunct.png)
 
 
 TODO: 
@@ -67,5 +84,6 @@ TODO:
 plotting eigenvectors as images
 Maybe 2.4.3 will be difficult
 how to re-recreate -> checking how data size was reduced etc
+https://github.com/Spiderixius/SML-Exercises/tree/master/admur13_exercise2
 
 
