@@ -16,7 +16,94 @@ library(tidyverse)  # data manipulation
 library(cluster)    # clustering algorithms
 library(factoextra) # clustering algorithms & visualization
 
-load('../data/id100.Rda') # dataset
+# load('../data/id100.Rda') # dataset
+```
+
+```{r plot functions}
+# get accuracy of the labels in percents
+get_accuracy <- function(predicted_labels, test_labels){
+  # accuracy(table(numbers_test_pred,id_test_labels))
+  tab <- table(predicted_labels, test_labels)
+  sum(diag(tab)/(sum(rowSums(tab)))) * 100
+}
+
+library(ggplot2)
+knn_get_kmeans_plot_cv_data <- function(test_data, test_labels, train_data, train_labels, fold_no, k, title_info){
+  # dont print training data validation when doing cross validation
+      
+    test_time_v <- c()
+    test_accuracy_v <- c()
+    train_accuracy_v <- c()
+    
+    for (rep in c(1:10)){
+      t_start <- as.numeric(proc.time())
+      # get the prediction
+      numbers_test_pred <- knn(train = train_data, test = test_data, cl = train_labels, k=k)
+      t_end <- as.numeric(proc.time())
+      delta_t <- (t_end -  t_start)[3]  # seconds
+      test_time_v <- c(test_time_v, delta_t)
+      #print(test_time_v)
+      
+      # see the performance on testing data
+      k_accuracy_test <-get_accuracy(test_labels, numbers_test_pred)
+      test_accuracy_v <- c(test_accuracy_v, k_accuracy_test)
+
+    }
+    
+    return(list("title_info"=title_info, "k"=k, "fold_no"=fold_no,"test_time_v"=test_time_v, "test_accuracy_v"=test_accuracy_v))
+}
+
+# Plot all the results given the data
+plot_results_cv_kmeans <- function(plot_data_ks_l){
+  ks <- c()
+  exec_time_means <- c()
+  exec_time_stds <- c()
+  
+  test_accuracy_means <- c()
+  test_accuracy_stds <- c()
+  
+  train_accuracy_means <- c()
+  train_accuracy_stds <- c()
+    
+  for (plot_data_k in plot_data_ks_l){
+    #print(plot_data_k$k)
+    ks <- c(ks, plot_data_k$k)
+    exec_time_means <- c(exec_time_means, mean(plot_data_k$test_time_v))
+    exec_time_stds <- c(exec_time_stds, sd(plot_data_k$test_time_v))
+    
+    test_accuracy_means <- c(test_accuracy_means, mean(plot_data_k$test_accuracy_v))
+    test_accuracy_stds <- c(test_accuracy_stds, sd(plot_data_k$test_accuracy_v))
+  }
+  df_plots <-data.frame(ks= ks, exec_time_means=exec_time_means, test_accuracy_stds=test_accuracy_stds)
+  #print(head(df_plots))
+  
+  main <- paste("Cross validation with 10 folds. Number of initial clusters = ", plot_data_k$title_info)
+  
+  g_time <- ggplot(df_plots, aes(x=ks)) + 
+    geom_line(aes(y=exec_time_means)) + 
+    geom_ribbon(aes(ymax=exec_time_means+exec_time_stds, ymin=exec_time_means-exec_time_stds), fill="pink", alpha=.5) +
+    labs(title=main, 
+         subtitle="execution time knn", 
+         caption="Source: abcd", 
+         y="time [ms]",
+         x="k-number of nearest neighbours") 
+  
+  colors <- c("test data" = "darkgreen", "train data" = "darkblue" )
+  g_accuracy <- ggplot(df_plots, aes(x=ks)) + 
+    geom_line(aes(y=test_accuracy_means, color="test data")) + 
+    geom_ribbon(aes(ymax=test_accuracy_means+test_accuracy_stds, ymin=test_accuracy_means-test_accuracy_stds), fill="green", alpha=.5) +
+  labs(title=main, 
+         subtitle="accuracy of knn", 
+         caption="Source: abcd", 
+         y="accuracy [%]",
+         x="k-number of nearest neighbours",
+        color = "Legend") +
+    scale_color_manual(values = colors)
+  
+  list_of_plots <- list(g_time, g_accuracy)
+  
+  return(list_of_plots)
+}
 ```
 
 # Exercise 3.1 K-means clustering:
@@ -66,6 +153,7 @@ get_k_means_clustered_data <- function(dataset, k_init_clusters){
 k_initial_clusters = 100
 train_kmeans_data <- get_k_means_clustered_data(training_data, k_initial_clusters)
 test_kmeans_data <- get_k_means_clustered_data(testing_data, k_initial_clusters)
+whole_kmeans_data <- get_k_means_clustered_data(id, k_initial_clusters)
 
 ```
 
@@ -76,9 +164,55 @@ During the comparison you should also consider the run times of the algorithm. A
 do the training of the k-NN using the centroids (new data)
 ``` {r test of the knn using the kmeans data using cross-validation}
 
+# for every fold check all the K's
+ks <- c(3,5,10)
 
+# do the folds
+folds <- createFolds(whole_kmeans_data[, 1], k = 10)
+fold_no <- 0 # just for printing the progress
+#current fold - to ignore in training data but to use as a validation dataset: fold -> test!
+for (fold in folds){
+  fold_no <- fold_no + 1
+        print(paste0("fold_no =", fold_no))
+        
+        fold <- sample(fold) # shuffle id numbers of fold 
+        
+        # use not-fold data as training and fold data as test
+        not_f_df <- whole_kmeans_data[ -fold, ] #training data
+        f_df <- whole_kmeans_data[ fold, ] #test data
+        
+        #not_f_df <- shuffled_df[ -fold, ] #training data
+        #f_df <- shuffled_df[ fold, ] #test data
+        
+        # get labels - supervision part
+        f_train_labels <- not_f_df[,1]
+        f_test_labels <- f_df[,1]
+  
+  # predict with KNN - test all k's for each fold
+  k_no <- 0 # just to keep track
+  plot_data_ks_l <- list()
+        for (k in ks){
+            k_no <- k_no + 1
+            
+            # f_test_pred <- knn(train = not_f_df[,c(2:ncol(not_f_df))], test = f_df[,c(2:ncol(f_df))], cl = not_f_df[,1], k=k)
+
+            print(paste0("      k =", k))
+            plot_data <- knn_get_kmeans_plot_cv_data(test_data=f_df[,c(2:ncol(f_df))], test_labels=f_df[,1],
+                                               train_data=not_f_df[,c(2:ncol(not_f_df))], train_labels=not_f_df[,1],
+                                               fold_no=fold_no, k=k, title_info = k_initial_clusters)
+            #print(plot_data)
+            plot_data_ks_l <- append(plot_data_ks_l, list(plot_data))
+        }
+  
+  ## Plotting-----------------------------------------------------------------------------------
+}
+list_of_plots <- plot_results_cv_kmeans(plot_data_ks_l)
+print(list_of_plots[1])
+print(list_of_plots[2])
+#show_pca_reconstruction(shuffled_df, searched_accum_var)
 ```
-
+ok we need to take those all 10 folds to make 1 plot out of it.
+we should just sum the equations from all the folds together and then divide/10?
 
 
 
