@@ -55,6 +55,13 @@ knn_get_kmeans_plot_cv_data <- function(test_data, test_labels, train_data, trai
 
 # Plot all the results given the data
 plot_results_cv_kmeans <- function(plot_data_ks_l){
+  # TODO:
+  # firstly we need to average among all the folds
+  # probably just make it all to one dataframe
+  # then select
+  df_tmp <- data.frame(Reduce(rbind, plot_data_ks_l))
+  
+  
   ks <- c()
   exec_time_means <- c()
   exec_time_stds <- c()
@@ -167,8 +174,9 @@ do the training of the k-NN using the centroids (new data)
 # for every fold check all the K's
 ks <- c(3,5,10)
 
+plot_data_ks_l <- list()
 # do the folds
-folds <- createFolds(whole_kmeans_data[, 1], k = 10)
+folds <- createFolds(whole_kmeans_data[, 1], k = 2)
 fold_no <- 0 # just for printing the progress
 #current fold - to ignore in training data but to use as a validation dataset: fold -> test!
 for (fold in folds){
@@ -190,7 +198,7 @@ for (fold in folds){
   
   # predict with KNN - test all k's for each fold
   k_no <- 0 # just to keep track
-  plot_data_ks_l <- list()
+  
         for (k in ks){
             k_no <- k_no + 1
             
@@ -206,13 +214,35 @@ for (fold in folds){
   
   ## Plotting-----------------------------------------------------------------------------------
 }
-list_of_plots <- plot_results_cv_kmeans(plot_data_ks_l)
-print(list_of_plots[1])
-print(list_of_plots[2])
-#show_pca_reconstruction(shuffled_df, searched_accum_var)
 ```
 ok we need to take those all 10 folds to make 1 plot out of it.
-we should just sum the equations from all the folds together and then divide/10?
+we should just sum the equations from all the folds together and then divide/number of folds?
+does number of folds in this case == number of people? I think yes, so if we use 2 people then 2 folds
+```{r plot the data}
+
+# TODO: finish saving the data for cross validation
+df_tmp <- data.frame(Reduce(rbind, plot_data_ks_l))
+# take all with k=3 and sum
+for (k in ks){
+  df_k <- df_tmp[df_tmp$k==k,]
+  # sum the test_time_v and test_accuracy_v
+  time_v_sum <- rep(0, 10) # 10 repetitions
+  acc_v_sum <- rep(0, 10)
+  for (i in 1:nrow(df_k3)){
+    time_v_sum <- time_v_sum + unlist(df_k3$test_time_v[i])
+    acc_v_sum <- acc_v_sum + unlist(df_k3$test_accuracy_v[i])
+  }
+  time_v_avg <- time_v_sum / nrow(df_k3)
+  acc_v_avg <- acc_v_sum / nrow(df_k3)
+}
+
+
+
+# list_of_plots <- plot_results_cv_kmeans(plot_data_ks_l)
+# print(list_of_plots[1])
+# print(list_of_plots[2])
+```
+
 
 
 
