@@ -1,0 +1,87 @@
+---
+title: "Exercise_3_clustering"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gmodels)
+library(class)
+library(caret)
+library(swirl)
+
+#loading libraries and dataset
+library(data.table) # working with ranges 
+library(tidyverse)  # data manipulation
+library(cluster)    # clustering algorithms
+library(factoextra) # clustering algorithms & visualization
+
+load('../data/id100.Rda') # dataset
+```
+
+# Exercise 3.1 K-means clustering:
+
+## Try to improve the performance of two persons training data ( disjunct ). 
+Perform K- means clustering of each cipher individually for the training set, in order to represent the training data as a number of cluster centroids. Now perform the training of the k-NN using the centroids of these clusters. You can try with different cluster sizes and see the resulting performance.
+``` {r load data}
+
+load("../data/idList-cornered-100-2021.Rdata") 
+id <- do.call(rbind, idList[1:2])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+
+
+# load whole data
+# get 1 person as training, 2nd as testing
+train_data_limit <- floor(nrow(id)/2)
+
+test_rows_id <- 1:(train_data_limit)
+train_rows_id <- (train_data_limit + 1) : nrow(id)
+
+training_data <- id[train_rows_id, ]
+testing_data <- id[test_rows_id, ]
+```
+
+``` {r reduce the dimensions of data using k-means}
+set.seed(2345)
+
+
+get_k_means_clustered_data <- function(dataset, k_init_clusters){
+  cipher_cluster <- c()
+  label_cluster <- c()
+
+  for( digit in 0:9) {
+  # digit <- 0
+    digit_data <- dataset[ dataset[, 1] == digit, ]
+    clusterData <- kmeans(digit_data, centers=k_initial_clusters)
+    cipher_cluster[[digit + 1]] <- clusterData$centers
+    label_cluster[[digit + 1]] <- c(1:k_initial_clusters)*0 + digit
+  }
+  # train_lab <- factor(unlist(label_cluster))
+  train_dat <- do.call(rbind, cipher_cluster)
+  return(train_dat)
+}
+
+
+k_initial_clusters = 100
+train_kmeans_data <- get_k_means_clustered_data(training_data, k_initial_clusters)
+test_kmeans_data <- get_k_means_clustered_data(testing_data, k_initial_clusters)
+
+```
+
+
+## 3.1.2 Compare your KNN performance based on the raw training data and based on the cluster centroids of the training data. 
+During the comparison you should also consider the run times of the algorithm. As the generation of clusters is based on random starting points cross-validation should be performed.
+
+do the training of the k-NN using the centroids (new data)
+``` {r test of the knn using the kmeans data using cross-validation}
+
+
+```
+
+
+
+
+Dear all, sorry that we did not make Task 3.1.3 of Exercise 3 very clear. In Task 3.1.3, we are asking to do K-means to reduce the size of the dataset. Subsequently, you can perform KNN for the classification task. The performance for comparison is related to the KNN.
+Write comment
+Karol Szurkowski
