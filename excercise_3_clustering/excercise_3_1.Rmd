@@ -53,59 +53,55 @@ knn_get_kmeans_plot_cv_data <- function(test_data, test_labels, train_data, trai
     return(list("title_info"=title_info, "k"=k, "fold_no"=fold_no,"test_time_v"=test_time_v, "test_accuracy_v"=test_accuracy_v))
 }
 
+# change plot data to cv plotting appropriate data
+get_cv_plot_data_kmeans <- function(plot_data_ks_l){
+  # TODO: finish saving the data for cross validation
+  df_goal <- data.frame()
+  df_tmp <- data.frame(Reduce(rbind, plot_data_ks_l))
+  # take all with k=3 and sum
+  for (k in ks){
+    df_k <- df_tmp[df_tmp$k==k,]
+    # sum the test_time_v and test_accuracy_v
+    time_v_sum <- rep(0, 10) # 10 repetitions
+    acc_v_sum <- rep(0, 10)
+    for (i in 1:nrow(df_k3)){
+      time_v_sum <- time_v_sum + unlist(df_k$test_time_v[i])
+      acc_v_sum <- acc_v_sum + unlist(df_k$test_accuracy_v[i])
+    }
+    time_v_avg <- time_v_sum / nrow(df_k)
+    acc_v_avg <- acc_v_sum / nrow(df_k)
+    df_row_k <- data.frame(df_k$title_info[1], k, mean(time_v_avg), sd(time_v_avg), mean(acc_v_avg), sd(acc_v_avg))
+    names(df_row_k) <- c('title_info', 'k', 'mean_time', 'sd_time', 'mean_acc', 'sd_acc')
+    df_goal <-rbind(df_goal, df_row_k)
+  }
+  return(df_goal)
+}
+
 # Plot all the results given the data
 plot_results_cv_kmeans <- function(plot_data_ks_l){
-  # TODO:
-  # firstly we need to average among all the folds
-  # probably just make it all to one dataframe
-  # then select
-  df_tmp <- data.frame(Reduce(rbind, plot_data_ks_l))
   
+  # translate average data to the cv
+  df_cv_plot <- get_cv_plot_data_kmeans(plot_data_ks_l)
   
-  ks <- c()
-  exec_time_means <- c()
-  exec_time_stds <- c()
+  main <- paste("Cross validation with 10 folds. Number of initial clusters = ", df_cv_plot$title_info)
   
-  test_accuracy_means <- c()
-  test_accuracy_stds <- c()
-  
-  train_accuracy_means <- c()
-  train_accuracy_stds <- c()
-    
-  for (plot_data_k in plot_data_ks_l){
-    #print(plot_data_k$k)
-    ks <- c(ks, plot_data_k$k)
-    exec_time_means <- c(exec_time_means, mean(plot_data_k$test_time_v))
-    exec_time_stds <- c(exec_time_stds, sd(plot_data_k$test_time_v))
-    
-    test_accuracy_means <- c(test_accuracy_means, mean(plot_data_k$test_accuracy_v))
-    test_accuracy_stds <- c(test_accuracy_stds, sd(plot_data_k$test_accuracy_v))
-  }
-  df_plots <-data.frame(ks= ks, exec_time_means=exec_time_means, test_accuracy_stds=test_accuracy_stds)
-  #print(head(df_plots))
-  
-  main <- paste("Cross validation with 10 folds. Number of initial clusters = ", plot_data_k$title_info)
-  
-  g_time <- ggplot(df_plots, aes(x=ks)) + 
-    geom_line(aes(y=exec_time_means)) + 
-    geom_ribbon(aes(ymax=exec_time_means+exec_time_stds, ymin=exec_time_means-exec_time_stds), fill="pink", alpha=.5) +
+  g_time <- ggplot(df_cv_plot, aes(x=ks)) + 
+    geom_line(aes(y=mean_time)) + 
+    geom_ribbon(aes(ymax=mean_time+sd_time, ymin=mean_time-sd_time), fill="pink", alpha=.5) +
     labs(title=main, 
          subtitle="execution time knn", 
          caption="Source: abcd", 
          y="time [ms]",
          x="k-number of nearest neighbours") 
   
-  colors <- c("test data" = "darkgreen", "train data" = "darkblue" )
-  g_accuracy <- ggplot(df_plots, aes(x=ks)) + 
-    geom_line(aes(y=test_accuracy_means, color="test data")) + 
-    geom_ribbon(aes(ymax=test_accuracy_means+test_accuracy_stds, ymin=test_accuracy_means-test_accuracy_stds), fill="green", alpha=.5) +
+  g_accuracy <- ggplot(df_cv_plot, aes(x=ks)) + 
+    geom_line(aes(y=mean_acc, color="darkgreen")) + 
+    geom_ribbon(aes(ymax=mean_acc+sd_acc, ymin=mean_acc-sd_acc), fill="green", alpha=.5) +
   labs(title=main, 
          subtitle="accuracy of knn", 
          caption="Source: abcd", 
          y="accuracy [%]",
-         x="k-number of nearest neighbours",
-        color = "Legend") +
-    scale_color_manual(values = colors)
+         x="k-number of nearest neighbours")
   
   list_of_plots <- list(g_time, g_accuracy)
   
@@ -181,68 +177,49 @@ fold_no <- 0 # just for printing the progress
 #current fold - to ignore in training data but to use as a validation dataset: fold -> test!
 for (fold in folds){
   fold_no <- fold_no + 1
-        print(paste0("fold_no =", fold_no))
-        
-        fold <- sample(fold) # shuffle id numbers of fold 
-        
-        # use not-fold data as training and fold data as test
-        not_f_df <- whole_kmeans_data[ -fold, ] #training data
-        f_df <- whole_kmeans_data[ fold, ] #test data
-        
-        #not_f_df <- shuffled_df[ -fold, ] #training data
-        #f_df <- shuffled_df[ fold, ] #test data
-        
-        # get labels - supervision part
-        f_train_labels <- not_f_df[,1]
-        f_test_labels <- f_df[,1]
+  print(paste0("fold_no =", fold_no))
   
+  fold <- sample(fold) # shuffle id numbers of fold 
+  
+  # use not-fold data as training and fold data as test
+  not_f_df <- whole_kmeans_data[ -fold, ] #training data
+  f_df <- whole_kmeans_data[ fold, ] #test data
+  
+  #not_f_df <- shuffled_df[ -fold, ] #training data
+  #f_df <- shuffled_df[ fold, ] #test data
+  
+  # get labels - supervision part
+  f_train_labels <- not_f_df[,1]
+  f_test_labels <- f_df[,1]
+
   # predict with KNN - test all k's for each fold
   k_no <- 0 # just to keep track
-  
-        for (k in ks){
-            k_no <- k_no + 1
-            
-            # f_test_pred <- knn(train = not_f_df[,c(2:ncol(not_f_df))], test = f_df[,c(2:ncol(f_df))], cl = not_f_df[,1], k=k)
 
-            print(paste0("      k =", k))
-            plot_data <- knn_get_kmeans_plot_cv_data(test_data=f_df[,c(2:ncol(f_df))], test_labels=f_df[,1],
-                                               train_data=not_f_df[,c(2:ncol(not_f_df))], train_labels=not_f_df[,1],
-                                               fold_no=fold_no, k=k, title_info = k_initial_clusters)
-            #print(plot_data)
-            plot_data_ks_l <- append(plot_data_ks_l, list(plot_data))
-        }
-  
-  ## Plotting-----------------------------------------------------------------------------------
-}
-```
-ok we need to take those all 10 folds to make 1 plot out of it.
-we should just sum the equations from all the folds together and then divide/number of folds?
-does number of folds in this case == number of people? I think yes, so if we use 2 people then 2 folds
-```{r plot the data}
+  for (k in ks){
+      k_no <- k_no + 1
+      
+      # f_test_pred <- knn(train = not_f_df[,c(2:ncol(not_f_df))], test = f_df[,c(2:ncol(f_df))], cl = not_f_df[,1], k=k)
 
-# TODO: finish saving the data for cross validation
-df_tmp <- data.frame(Reduce(rbind, plot_data_ks_l))
-# take all with k=3 and sum
-for (k in ks){
-  df_k <- df_tmp[df_tmp$k==k,]
-  # sum the test_time_v and test_accuracy_v
-  time_v_sum <- rep(0, 10) # 10 repetitions
-  acc_v_sum <- rep(0, 10)
-  for (i in 1:nrow(df_k3)){
-    time_v_sum <- time_v_sum + unlist(df_k3$test_time_v[i])
-    acc_v_sum <- acc_v_sum + unlist(df_k3$test_accuracy_v[i])
+      print(paste0("      k =", k))
+      plot_data <- knn_get_kmeans_plot_cv_data(test_data=f_df[,c(2:ncol(f_df))], test_labels=f_df[,1],
+                                         train_data=not_f_df[,c(2:ncol(not_f_df))], train_labels=not_f_df[,1],
+                                         fold_no=fold_no, k=k, title_info = k_initial_clusters)
+      #print(plot_data)
+      plot_data_ks_l <- append(plot_data_ks_l, list(plot_data))
   }
-  time_v_avg <- time_v_sum / nrow(df_k3)
-  acc_v_avg <- acc_v_sum / nrow(df_k3)
 }
-
-
-
-# list_of_plots <- plot_results_cv_kmeans(plot_data_ks_l)
-# print(list_of_plots[1])
-# print(list_of_plots[2])
 ```
-
+```{r }
+plot_list <- plot_results_cv_kmeans(plot_data_ks_l)
+# plot_list[2]
+save_path <- "figures/3_1/cross_valid_kmeans/"
+i<-0
+for (plot in plot_list){
+  i<-i+1
+  ggsave(paste(save_path, "cv_kmeans_", i, ".png"), plot = plot,
+       width = 15, height = 10, units = "cm")
+}
+```
 
 
 
