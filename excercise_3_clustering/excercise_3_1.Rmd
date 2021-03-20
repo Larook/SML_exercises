@@ -263,6 +263,7 @@ for (plot in plot_list){
 ```
 
 ``` {r kmeans reduced}
+plot_indicator<-0 
 for (k_initial_clusters in initial_clusters_numbers){
   # reduce the dimensions of data using k-means
 
@@ -289,3 +290,124 @@ Dear all, sorry that we did not make Task 3.1.3 of Exercise 3 very clear. In Tas
 ## 3.1.3 Perform K-means clustering on each cipher individually for the training data from all the
 available datasets ( disjunct ). Represent the training data as a number of cluster centroids and
 compare performance, try multiple cluster sizes.
+``` {r plot with different init clusters}
+whole_data_list <- list()
+for (k_initial_clusters in initial_clusters_numbers){
+  # reduce the dimensions of data using k-means
+  plot_data_ks_l <- get_cross_validation_kmeans_plot_data_lists(dataset=id, ks=ks, number_of_folds=number_of_people, k_initial_clusters = k_initial_clusters)
+  whole_data_list <- append(whole_data_list, plot_data_ks_l)
+}
+```
+```{r plot all the cluster sizes on one plot}
+# # whole_data_list
+# df_whole_plot_data <- data.frame(Reduce(rbind, whole_data_list))
+
+df_whole <- data.frame()
+df_tmp <- data.frame(Reduce(rbind, whole_data_list))
+# take all with k=3 and sum
+
+for (init_k in initial_clusters_numbers){
+  
+  for (k in ks){
+    df_k <- df_tmp[df_tmp$k==k,]
+    df_k <- df_k[df_k$title_info==init_k, ]
+    # sum the test_time_v and test_accuracy_v
+    time_v_sum <- rep(0, 10) # 10 repetitions
+    acc_v_sum <- rep(0, 10)
+    for (i in 1:nrow(df_k)){
+      time_v_sum <- time_v_sum + unlist(df_k$test_time_v[i])
+      acc_v_sum <- acc_v_sum + unlist(df_k$test_accuracy_v[i])
+    }
+    time_v_avg <- time_v_sum / nrow(df_k)
+    acc_v_avg <- acc_v_sum / nrow(df_k)
+    df_row_k <- data.frame(df_k$title_info[1], k, mean(time_v_avg), sd(time_v_avg), mean(acc_v_avg), sd(acc_v_avg))
+    names(df_row_k) <- c('title_info', 'k', 'mean_time', 'sd_time', 'mean_acc', 'sd_acc')
+    df_whole <-rbind(df_whole, df_row_k)
+  }
+  
+}
+```
+```{r plotting}
+# Try to plot everything on 1 plot
+main <- paste("Comparison of performance with varying initial clusters")
+
+
+df_50 <- df_whole[df_whole$title_info==50, ]
+df_75 <- df_whole[df_whole$title_info==75, ]
+df_100 <- df_whole[df_whole$title_info==100, ]
+df_125 <- df_whole[df_whole$title_info==125, ]
+df_150 <- df_whole[df_whole$title_info==150, ]
+
+
+g_time <- ggplot(df_50, aes(x=ks)) +
+  # geom_line(aes(y=mean_time)) +
+  # geom_ribbon(aes(ymax=mean_time+sd_time, ymin=mean_time-sd_time), fill="pink", alpha=.5) +
+  
+  geom_line(aes(y=df_50$mean_time, color="cluster init 50")) + 
+  geom_ribbon(aes(ymax=df_50$mean_time+df_50$sd_time, ymin=df_50$mean_time-df_50$sd_time), fill="green", alpha=.3)+
+  
+  geom_line(aes(y=df_75$mean_time, color="cluster init 75")) + 
+  geom_ribbon(aes(ymax=df_75$mean_time+df_75$sd_time, ymin=df_75$mean_time-df_75$sd_time), fill="red", alpha=.3)+
+  
+  geom_line(aes(y=df_100$mean_time, color="cluster init 100")) +
+  geom_ribbon(aes(ymax=df_100$mean_time+df_100$sd_time, ymin=df_100$mean_time-df_100$sd_time), fill="blue", alpha=.3)+
+
+  geom_line(aes(y=df_125$mean_time, color="cluster init 125")) +
+  geom_ribbon(aes(ymax=df_125$mean_time+df_125$sd_time, ymin=df_125$mean_time-df_125$sd_time), fill="purple", alpha=.3)+
+
+  geom_line(aes(y=df_150$mean_time, color="cluster init 150")) +
+  geom_ribbon(aes(ymax=df_150$mean_time+df_150$sd_time, ymin=df_150$mean_time-df_150$sd_time), fill="brown", alpha=.3)+
+  
+  scale_colour_manual("", 
+                      values = c("cluster init 50"="green", 
+                                 "cluster init 75"="red",
+                                 "cluster init 100"="blue",
+                                 "cluster init 125"="purple",
+                                 "cluster init 150"="brown" )) +
+labs(title=main, 
+       subtitle="accuracy of knn", 
+       caption="Source: abcd", 
+       y="time [ms]",
+       x="k-number of nearest neighbours")
+
+
+g_accuracy <- ggplot(df_50, aes(x=ks)) + 
+  geom_line(aes(y=df_50$mean_acc, color="cluster init 50")) + 
+  geom_ribbon(aes(ymax=df_50$mean_acc+df_50$sd_acc, ymin=df_50$mean_acc-df_50$sd_acc), fill="green", alpha=.3)+
+  
+  geom_line(aes(y=df_75$mean_acc, color="cluster init 75")) + 
+  geom_ribbon(aes(ymax=df_75$mean_acc+df_75$sd_acc, ymin=df_75$mean_acc-df_75$sd_acc), fill="red", alpha=.3)+
+  
+  geom_line(aes(y=df_100$mean_acc, color="cluster init 100")) +
+  geom_ribbon(aes(ymax=df_100$mean_acc+df_100$sd_acc, ymin=df_100$mean_acc-df_100$sd_acc), fill="blue", alpha=.3)+
+
+  geom_line(aes(y=df_125$mean_acc, color="cluster init 125")) +
+  geom_ribbon(aes(ymax=df_125$mean_acc+df_125$sd_acc, ymin=df_125$mean_acc-df_125$sd_acc), fill="purple", alpha=.3)+
+
+  geom_line(aes(y=df_150$mean_acc, color="cluster init 150")) +
+  geom_ribbon(aes(ymax=df_150$mean_acc+df_150$sd_acc, ymin=df_150$mean_acc-df_150$sd_acc), fill="brown", alpha=.3)+
+  
+  scale_colour_manual("", 
+                      values = c("cluster init 50"="green", 
+                                 "cluster init 75"="red",
+                                 "cluster init 100"="blue",
+                                 "cluster init 125"="purple",
+                                 "cluster init 150"="brown" )) +
+labs(title=main, 
+       subtitle="accuracy of knn", 
+       caption="Source: abcd", 
+       y="accuracy [%]",
+       x="k-number of nearest neighbours")
+list_of_plots <- list(g_time, g_accuracy)
+
+
+save_path <- "figures/3_1/comparison/"
+plot_indicator <- 0
+for (plot in list_of_plots){
+  plot_indicator <- plot_indicator + 1
+  print(plot)
+  ggsave(paste(save_path, "cv_kmeans_", plot_indicator, ".png"), plot = plot,
+         width = 15, height = 10, units = "cm")
+}
+```
+
