@@ -77,6 +77,7 @@ get_cv_plot_data_kmeans <- function(plot_data_ks_l){
   return(df_goal)
 }
 
+
 # Plot all the results given the data
 plot_results_cv_kmeans <- function(plot_data_ks_l){
   
@@ -107,6 +108,39 @@ plot_results_cv_kmeans <- function(plot_data_ks_l){
   
   return(list_of_plots)
 }
+
+
+# without KMEANS
+plot_results_cv_knn <- function(plot_data_ks_l){
+  
+  # translate average data to the cv
+  df_cv_plot <- get_cv_plot_data_kmeans(plot_data_ks_l)
+  
+  main <- paste("Cross validation with 10 folds. Pure knn without kmeans clustering")
+  
+  g_time <- ggplot(df_cv_plot, aes(x=ks)) + 
+    geom_line(aes(y=mean_time)) + 
+    geom_ribbon(aes(ymax=mean_time+sd_time, ymin=mean_time-sd_time), fill="pink", alpha=.5) +
+    labs(title=main, 
+         subtitle="execution time knn", 
+         caption="Source: abcd", 
+         y="time [ms]",
+         x="k-number of nearest neighbours") 
+  
+  g_accuracy <- ggplot(df_cv_plot, aes(x=ks)) + 
+    geom_line(aes(y=mean_acc, color="darkgreen")) + 
+    geom_ribbon(aes(ymax=mean_acc+sd_acc, ymin=mean_acc-sd_acc), fill="green", alpha=.5) +
+  labs(title=main, 
+         subtitle="accuracy of knn", 
+         caption="Source: abcd", 
+         y="accuracy [%]",
+         x="k-number of nearest neighbours")
+  
+  list_of_plots <- list(g_time, g_accuracy)
+  
+  return(list_of_plots)
+}
+
 
 
 # down sample the data using k_means clustering
@@ -242,23 +276,60 @@ get_cross_validation_plot_data_lists <- function(dataset, ks, number_of_folds){
   return(plot_data_ks_l)
 }
 
+# perform the whole cross validation WITHOUT KMEANS
+get_cross_validation_nokmeans_plot_data_lists <- function(dataset, ks, number_of_folds){
+  plot_data_ks_l <- list()
+  # do the folds
+  folds <- createFolds(dataset[, 1], k = number_of_folds)
+  fold_no <- 0 # just for printing the progress
+  #current fold - to ignore in training data but to use as a validation dataset: fold -> test!
+  for (fold in folds){
+    fold_no <- fold_no + 1
+    print(paste0("fold_no =", fold_no))
+    
+    fold <- sample(fold) # shuffle id numbers of fold 
+    
+    # use not-fold data as training and fold data as test
+    not_f_df <- dataset[ -fold, ] #training data
+    f_df <- dataset[ fold, ] #test data
+  
+    # predict with KNN - test all k's for each fold
+    k_no <- 0 # just to keep track
+    for (k in ks){
+        k_no <- k_no + 1
+        print(paste0("      k =", k))      
+        # f_test_pred <- knn(train = not_f_df[,c(2:ncol(not_f_df))], test = f_df[,c(2:ncol(f_df))], cl = not_f_df[,1], k=k)
+  
+        plot_data <- knn_get_kmeans_plot_cv_data(test_data=f_df[,c(2:ncol(f_df))], test_labels=f_df[,1],
+                                           train_data=not_f_df[,c(2:ncol(not_f_df))], train_labels=not_f_df[,1],
+                                           fold_no=fold_no, k=k, title_info = k_initial_clusters)
+        #print(plot_data)
+        plot_data_ks_l <- append(plot_data_ks_l, list(plot_data))
+    }
+  }
+  return(plot_data_ks_l)
+}
+
 
 ```
 
-```{r all in one reduced dataset}
+```{r all in one NOT reduced dataset}
 plot_indicator<-0 
 
 ks <- c(3,5,10)
-initial_clusters_numbers <- c(50, 75, 100, 125, 150)
+# initial_clusters_numbers <- c(50, 75, 100, 125, 150)
 
 # do once without initial clusters
-plot_data_ks_l <- get_cross_validation_plot_data_lists(dataset=id, ks=ks, number_of_folds=number_of_people)
-plot_list <- plot_results_cv_kmeans(plot_data_ks_l)
+plot_data_ks_l_nonkmean <- get_cross_validation_nokmeans_plot_data_lists(dataset=id, ks=ks, number_of_folds=number_of_people)
+plot_list <- plot_results_cv_knn(plot_data_ks_l_nonkmean)
+
+save_path <- "figures/3_1/cross_valid_without_kmeans/"
+
 for (plot in plot_list){
   plot_indicator<-plot_indicator+1
   print(plot)
-  # ggsave(paste(save_path, "cv_kmeans_", plot_indicator, ".png"), plot = plot,
-  #      width = 15, height = 10, units = "cm")
+  ggsave(paste(save_path, "cv_knn_", plot_indicator, ".png"), plot = plot,
+  width = 15, height = 10, units = "cm")
 }
 ```
 
