@@ -33,6 +33,21 @@ df_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], scale = TRUE, center = T
 ```
 compute the information gain associated to it (plot 5 graphs, one for each component, and show the highest information gain). See slides for how to compute information gain.
 ```{r info_gain}
+# define the function for normalization
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+# prepare data
+load("../data/idList-co-100.Rdata")
+id <- do.call(rbind, idList[1:2])
+id <- as.data.frame(id)
+id[,1] <- factor(id[,1])
+
+id_sn <- as.data.frame(lapply(id[-1], normalize))
+
+################################################################# Exercise 4.1.1 ################################################################# 
+
 # define the function to compute entropy
 entropy <- function(S) { # Function to calculate entropy as in the slides
   fullSum <- 0
@@ -46,7 +61,7 @@ entropy <- function(S) { # Function to calculate entropy as in the slides
   return(fullSum)
 }
 
-id_pca <- prcomp(x=shuffled_df[,(2:ncol(shuffled_df))], center = TRUE, scale. = TRUE) 
+id_pca <- prcomp(id_sn, center = TRUE, scale. = TRUE) 
 
 id_pca_first_5 <- id_pca$x[, 1:5] # Take first five scores
 id_pca_first_5 <- data.frame(id_pca_first_5) # Make it a data frame
@@ -54,29 +69,27 @@ id_pca_first_5 <- data.frame(id_pca_first_5) # Make it a data frame
 # Calculate starting entropy
 entBefore <- entropy(id) 
 
-for( pca_no in (1:5)){
+for( img in (1:5)){
   entList <- c() 
   xList <- c()  
   
-  Pts <- seq(min(id_pca_first_5[ ,pca_no]), max(id_pca_first_5[ ,pca_no]), length.out=200)
-  for( splitP in (1:length(Pts)) ){
-    S1 <- id[ id_pca_first_5[ ,pca_no] < Pts[splitP], ]   # Perform splits from original dataset
-    S2 <- id[ id_pca_first_5[ ,pca_no] >= Pts[splitP], ]
-    # divide into 2 groups - smaller than current threshold or higher
+  Pts <- seq(min(id_pca_first_5[ ,img]), max(id_pca_first_5[ ,img]), length.out=200)
+  for( splitP in (1:200) ){
+    S1 <- id[ id_pca_first_5[ ,img] < Pts[splitP], ]   # Perform splits
+    S2 <- id[ id_pca_first_5[ ,img] >= Pts[splitP], ]
     s1 <- nrow(S1) 
     s2 <- nrow(S2)
     xList[splitP] <- Pts[splitP]
     ent <- ( s1 * entropy(S1) )/(s1 + s2) + ( s2 * entropy(S2) )/(s1 + s2)  # Calculate entropy
     entList[splitP] <-  entBefore - ent 	# Information gain is calculated 
   }
-  plot(xList, entList, xlab="sequence from min to max value of this PC",ylab=paste("Information gain of PC ", pca_no) )
-  # TODO: title of plots! + How to understand it?
+  plot(xList, entList, xlab="sequence from min to max value of this PC",ylab=paste("Information gain of PC ", img) )
 }
+
 ```
 ## Understanding the information gain plots
 x - sequence of min and max values of Principal Components (prcomp.x), we use it to find the best threshold to do classification
 y - for every point of x.axis we are calculating the information gain, that we achieve with comparing the entropy before and after PCA decomposition.
-
 
 we split data based on min and max values of PCA as thresholds-> split rows (means digits)
 for every PCA 
@@ -84,6 +97,8 @@ we compare then the entropies to choose the optimal point which gives the highes
 
 So now for every PCA we have an optimal decision point (of splitting the main dataset) - that we have obtained with the PCA decomposition and entropy calculation.
 
+
+## 4.1.2 - Compute a decision tree for the digit classification and visualize it. You can use “rpart” for creating a tree and “rpart.plot” for visualizing the C5.0 tree.
 ``` {r 4_1_2}
 # if you use the rpart lib
 library(rpart)
@@ -94,7 +109,16 @@ datanew$States <-factor(datanew[,6])
 treeNew <- rpart(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew, method = "class")
 summary(treeNew)
 # Plot the tree
-rpart.plot(treeNew, box.palette="Blues")
+
+# rpart.plot(treeNew)
+# 
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+# 
+# # plot mytree
+fancyRpartPlot(treeNew, caption = NULL)
+# https://community.rstudio.com/t/decision-tree-rpart-summary-interpretation/9996
 
 # # if you use the C50 lib
 # library(C50)
@@ -102,47 +126,44 @@ rpart.plot(treeNew, box.palette="Blues")
 # plot(treeModel)
 
 ```
+To understand the plot we need to know few things:
+top - is the inspected class
+0.x is the probability of the Y% samples belonging to the each label (class)
+Data is splitted by the thresholds calculated from the previous exercise. Here instead of "information gain" they are using the "Gini index".
 
+Ok from the top:
+we are starting with 100% of data -> 8000 of rows (digits) and we are checking what are the probabilities of the rows to be 0 (digit on the top of rectangle - it shows the class with the highest probability for the data to belong to).
+this 100% of samples has 0.1 probability to belong to the every class, but the 0 is written on the top, because it supposed to be the "highest" prob.
 
-```{r information_gain}
-# https://www.r-bloggers.com/2020/02/how-is-information-gain-calculated/
+then we want to split the data into 2 parts. We are cheking which PCx has the highest "improvement" ~ related to Gini index, which does same thing as "Information Gain"
+So we basically split the data based on the threshold of the PCx with most importance.
+Rows, that are below thershold go to the left side, and others go to the right -> in next boxes you dont have 100% of data, but the percentage of the overall data that fitted into the threshold filtering.
 
-# Information Gain (IG) or reduction in entropy from the
-# attribute test:
+The whole tree shows us probabilities of classification of rows, based on the thresholding the data with the entropy of the PC.
 
-# IG (A) = Entropy before − Entropy after
-
-library(FSelector)
-info <- data.frame(fruits = c("watermelon", "apple", "banana", "grape", "grapefruit", "lemon"))
-info$sizes <- c("big", "medium", "medium","small" ,"medium", "small")
-info$colors <- c("green", "red", "yellow", "green", "yellow", "yellow")
-info$shapes <- c("round", "round", "thin", "round", "round", "round")
-# get information gain results
-information.gain(formula(info), info)
-
-
-
-```
-
-## 4.1.2 - Compute a decision tree for the digit classification and visualize it. You can use “rpart” for creating a tree and “rpart.plot” for visualizing the C5.0 tree.
-
-``` {r decision_tree_classification}
-datanew <- cbind(id_pca_first_5, id[,1])
-# ‘id_pca_first_5’ is a dataframe
-datanew$States <-factor(datanew[,6])
-tree <- rpart(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew, method = "class")
-rpart.plot(tree)
-
-# or alternatively 
-
-library(C50)
-treeModel <- C5.0(x = id[, -1], y = id[,1])
-plot(treeModel)
-```
 
 ## 4.1.3 – Using the full data set (i.e. dataset from multiple people), evaluate a trained decision tree using cross validation. Try to train a tree with PCA, and without PCA (raw data). Discuss the important parameters.
 ``` {r cross_validation_full_dataset}
-predictions <- predict(tree, id_new[,-1], type = "class")
+
+################################################################# Exercise 4.1.3 #################################################################
+
+library(class)
+library(caret)
+
+# Train the tree without PCA
+treeNew <- rpart(V1 ~ ., data = id, method = "class")
+summary(treeNew)
+fancyRpartPlot(treeNew, caption = NULL)
+
+# new data for evaluation
+id2 <- do.call(rbind, idList[6:10])
+id2 <- as.data.frame(id2)
+id2[,1] <- factor(id2[,1])
+
+predictions <- predict(treeNew, id2[,-1], type = "class") # Test, remember to set output as "class"
+
+cf <- confusionMatrix(predictions, id2[,1])
+print( sum(diag(cf$table))/sum(cf$table) )
 ```
 
 
