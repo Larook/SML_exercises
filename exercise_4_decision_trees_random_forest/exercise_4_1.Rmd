@@ -106,18 +106,18 @@ library(rpart.plot)
 
 datanew <- cbind(id_pca_first_5, id[,1])
 datanew$States <-factor(datanew[,6])
-treeNew <- rpart(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew, method = "class")
-summary(treeNew)
+tree_raw <- rpart(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew, method = "class")
+summary(tree_raw)
 # Plot the tree
 
-# rpart.plot(treeNew)
+# rpart.plot(tree_raw)
 # 
 library(rattle)
 library(rpart.plot)
 library(RColorBrewer)
 # 
 # # plot mytree
-fancyRpartPlot(treeNew, caption = NULL)
+fancyRpartPlot(tree_raw, caption = NULL)
 # https://community.rstudio.com/t/decision-tree-rpart-summary-interpretation/9996
 
 # # if you use the C50 lib
@@ -149,21 +149,84 @@ The whole tree shows us probabilities of classification of rows, based on the th
 
 library(class)
 library(caret)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+library(plyr)
+library(rfUtilities)
 
 # Train the tree without PCA
-treeNew <- rpart(V1 ~ ., data = id, method = "class")
-summary(treeNew)
-fancyRpartPlot(treeNew, caption = NULL)
+tree_raw <- rpart(V1 ~ ., data = id, method = "class")
+summary(tree_raw)
+max_depth_raw <- tree_raw$control$maxdepth
+fancyRpartPlot(tree_raw, caption = NULL)
+
+# tree with the PCA
+datanew <- cbind(id_pca_first_5, id[,1])
+datanew$States <-factor(datanew[,6])
+tree_pca <- rpart(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew, method = "class")
+max_depth_pca <- tree_pca$control$maxdepth
 
 # new data for evaluation
 id2 <- do.call(rbind, idList[6:10])
 id2 <- as.data.frame(id2)
 id2[,1] <- factor(id2[,1])
 
-predictions <- predict(treeNew, id2[,-1], type = "class") # Test, remember to set output as "class"
+## Predicting the outcome using the full tree_raw
+predictions_raw <- predict(tree_raw, id2[,-1], type = "class") # Test, remember to set output as "class"
+cf_raw <- confusionMatrix(predictions_raw, id2[,1])
+accuracy_predict_raw <- sum(diag(cf_raw$table))/sum(cf_raw$table)
+# and pca tree
+id2_sn <- as.data.frame(lapply(id2[-1], normalize))
+id2_pca <- prcomp(id2_sn, center = TRUE, scale. = TRUE) 
+id2_pca_first_5 <- id2_pca$x[, 1:5] # Take first five scores
+id2_pca_first_5 <- data.frame(id2_pca_first_5) # Make it a data frame
+id2_pca_first_5 <- cbind(id2_pca_first_5, id2[,1])
+id2_pca_first_5$States <-factor(id2_pca_first_5[,6])
 
-cf <- confusionMatrix(predictions, id2[,1])
-print( sum(diag(cf$table))/sum(cf$table) )
+predictions_pca <- predict(tree_pca, id2_pca_first_5, type = "class") # Test, remember to set output as "class"
+cf_pca <- confusionMatrix(predictions_pca, id2[,1])
+accuracy_predict_pca <- sum(diag(cf_pca$table))/sum(cf_pca$table)
+
+barplot(c(accuracy_predict_raw, accuracy_predict_pca),
+main="comparison of accuracy of the trees using 10-fold cross validation",
+xlab="Raw pixel data on the left and normalized PCs data on the right",
+ylab="accuracy given new, unseed data",
+border="red",
+col="blue",
+density=10
+)
+
+```
+
+```{r}
+# https://towardsdatascience.com/how-to-find-decision-tree-depth-via-cross-validation-2bf143f0f3d6
+# https://inferate.blogspot.com/2015/05/k-fold-cross-validation-with-decision.html
+# https://www.guru99.com/r-decision-trees.html
+set.seed(123)
+# CROSS VALIDATION AVERAGE ERROR FOR PCA DATA
+folds <- split(datanew, cut(sample(1:nrow(datanew)),10))
+errs_PCA <- rep(NA, length(folds))
+
+for (tree_depth in treeModel_pca$control$maxdepth:1) 
+
+for (i in 1:length(folds)) {
+ test <- ldply(folds[i], data.frame)
+ train <- ldply(folds[-i], data.frame)
+ treeModel_pca <- rpart(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew, method = "class",  control =rpart.control(maxdepth = 30))
+
+ tmp.predict <- predict(treeModel_pca, newdata = test, type = "class")
+ conf.mat <- table(test$States, tmp.predict)
+ errs_PCA[i] <- 1-sum(diag(conf.mat))/sum(conf.mat)
+}
+plot(1:length(folds), errs_PCA, xlab="folds",ylab=sprintf("average error using k-fold cross-validation: %.3f percent", 100*mean(errs_PCA)))
+
+
+# CROSS VALIDATION AVERAGE ERROR FOR RAW DATA
+
+
 ```
 
 
