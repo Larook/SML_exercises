@@ -229,5 +229,44 @@ plot(1:length(folds), errs_PCA, xlab="folds",ylab=sprintf("average error using k
 
 ```
 
+################################################################# 4.2 Random Forests #################################################################
+## 4.2 Create a Random Forest classifier and evaluate it using cross validation. Discuss the critical parameters of “randomForest” (e.g., number and depth of trees)
+```{r 4_2}
+library(party)
+library(randomForest)
+library(rfUtilities)
+
+# load("idList-co-100.Rdata")
+# 
+# id <- do.call(rbind, idList[1:5])
+# id <- as.data.frame(id)
+# id[,1] <- factor(id[,1])
+# 
+# id2 <- do.call(rbind, idList[6:10])
+# id2 <- as.data.frame(id2)
+# id2[,1] <- factor(id2[,1])
+
+model.randomforest <- randomForest(V1 ~ ., data = id, ntree=100)
+p <- predict(model.randomforest,id2)
+
+cf <- confusionMatrix(p, id2[,1])
+print( sum(diag(cf$table))/sum(cf$table) )
+
+plot(model.randomforest) # Error as a function of trees
+
+# 10-fold cross validation
+model.cv <- rf.crossValidation(x = model.randomforest, xdata = id, p = 0.1, n = 10) 
+
+# Plot cross validation verses model producers accuracy
+par(mfrow=c(1,2)) 
+plot(model.cv, type = "cv", main = "CV producers accuracy")
+plot(model.cv, type = "model", main = "Model producers accuracy")
+
+# Plot cross validation verses model oob
+par(mfrow=c(1,2)) 
+plot(model.cv, type = "cv", stat = "oob", main = "CV oob error")
+plot(model.cv, type = "model", stat = "oob", main = "Model oob error")
+```
+
 
 
