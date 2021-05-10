@@ -1,0 +1,233 @@
+---
+title: "Exercise_5_SVM"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("kernlab")
+library(readr)
+library(caret)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+
+```
+
+## 5.1.1 train_dataa SVM classifier on the data, and evaluate the performance of the classifier. For example, you can do a disjunct study: half data as the training data and the other half as the test data.
+
+``` {r sVM}
+
+load("../data/idList-co-100.Rdata")
+
+
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+
+id <- do.call(rbind, idList[1:2])
+id <- as.data.frame(id)
+id[,1] <- factor(id[,1])
+
+id_sn <- as.data.frame(lapply(id[-1], normalize))
+
+## 50/50 split of dataset
+smp_size <- floor(0.5 * nrow(id))
+
+## set the seed to make your partition reproducible
+set.seed(123)
+train_ind <- sample(seq_len(nrow(id)), size = smp_size)
+
+train_data<- id[train_ind, ]
+test <- id[-train_ind, ]
+
+
+# ...................... TRY DIFFERENT C VALUES ................................................
+
+#classifier_rbf <-ksvm(V1~ ., data = train, kernel = "vanilladot", C = 1)
+#classifier_rbf <-ksvm(V1~., data = train, kernel = "rbfdot", kpar=list(sigma=0.05), C = 1)
+classifier_rbf <-ksvm(V1~ ., data = train, kernel = "polydot", C = 0.5)
+datasetTest <- predict(classifier_rbf,test)
+confusionMatrix(datasetTest, test$V1)
+
+
+#table(datasetTest, test[,1])
+#plot(datasetTest, test[,1], type="l")
+
+```
+
+```{r github}
+# https://github.com/kmaheshkulkarni/Use-image-classification-to-identify-handwritten-digits-using-Support-Vector-Machine-Algorithm/blob/master/DDA1710214_.R
+
+#==================================Loading Libraries==========================================#
+library(kernlab)
+library(readr)
+library(caret)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(plotly)
+
+#===============================Exploring & Preparing the Data===============================#
+#Loading Data train_dataData#
+# mnist_trainData <- read_csv("C:/Users/Mpk1/Desktop/SVM Original/SVM/mnist_train.csv")
+# 
+# colnames(mnist_trainData)[1]<-"PatternRec"
+# for(i in seq(2,ncol(mnist_trainData),by=1)){colnames(mnist_trainData)[i]<-paste("Colmnist",as.character(i-1),sep = "")}
+
+# View(mnist_trainData)
+
+#Loading Data Test Data#
+# mnist_testData <- read_csv("C:/Users/Mpk1/Desktop/SVM Original/SVM/mnist_test.csv")
+# 
+# colnames(mnist_testData)[1]<-"PatternRec"
+# for(i in seq(2,ncol(mnist_testData),by=1)){colnames(mnist_testData)[i]<-paste("Colmnist",as.character(i-1),sep = "")}
+
+# View(mnist_testData)
+# 
+# #Checking Dimensions of train_datadata, Structure of dataset
+# dim(mnist_trainData)
+# str(mnist_trainData)
+# head(mnist_trainData)
+# nrow(mnist_trainData)
+# names(mnist_trainData)
+# 
+# #Checking Dimensions of Test data, Structure of dataset
+# dim(mnist_testData)
+# str(mnist_testData)
+# head(mnist_testData)
+# nrow(mnist_testData)
+# names(mnist_testData)
+# 
+# #summarry of Test and train_dataData
+# summary(mnist_trainData)
+# summary(mnist_testData)
+# 
+# #Checking NA or Missing values from mnist_testData and mnist_trainData
+# sapply(mnist_trainData, function(x) sum(is.na(x)))
+# sapply(mnist_testData, function(x) sum(is.na(x)))
+
+# # Splitting the data between mnist_trainData and mnist_testData
+# mnist_trainData$PatternRec<-factor(mnist_trainData$PatternRec)
+# mnist_testData$PatternRec<-factor(mnist_testData$PatternRec)
+# set.seed(100)
+# train.indic = sample(1:nrow(mnist_trainData), 0.5*nrow(mnist_trainData))
+# test.indic= sample(1:nrow(mnist_testData), 1.0*nrow(mnist_testData))
+# 
+# train_mnist = mnist_trainData[train.indic, ]
+# test_mnist = mnist_testData[test.indic, ]
+
+id <- do.call(rbind, idList[1:2])
+id <- as.data.frame(id)
+id[,1] <- factor(id[,1])
+
+id_sn <- as.data.frame(lapply(id[-1], normalize))
+
+## 50/50 split of dataset
+smp_size <- floor(0.5 * nrow(id))
+
+## set the seed to make your partition reproducible
+set.seed(123)
+train_ind <- sample(seq_len(nrow(id)), size = smp_size)
+
+train_data <- id[train_ind, ]
+test_data <- id[-train_ind, ]
+
+```
+
+```{r Model_linear}
+#===========================Model Training for Data=========================================#
+#==================================Model_linear=============================================#
+Model_linear <- ksvm(V1~ ., data = train_data, scale = FALSE, kernel = "vanilladot")
+Eval_linear<- predict(Model_linear, test_data)
+test_confusion <- confusionMatrix(Eval_linear, test_data$V1)
+paste("confusionMatrix(datasetTest,test$V1) = ", test_confusion$overall[1])
+# Accuracy    :  0.972
+
+#______________We use train_datafunction from caret package to perform crossvalidation______________#
+trainControl <- trainControl(method="cv", number=5)
+metric <- "Accuracy"
+set.seed(100)
+Model_linear
+
+# making a grid of C values.
+# grid <- expand.grid(C=seq(0.01, 0.5, by=1))
+grid <- expand.grid(C=c(0.01, 0.1, 0.2, 0.3, 0.4))
+
+# Performing 5-fold cross validation
+fit.svm <- train(V1~ ., data=train_data, method="svmLinear", metric=metric,
+                 tuneGrid=grid, trControl=trainControl)
+
+# Printing cross validation result
+print(fit.svm)
+# Best tune at C = 0.1,
+# Accuracy = 0.9725012
+
+# Plotting "fit.svm" results
+plot(fit.svm, ylim = c(0.9, 1))
+
+#**************# Valdiating the model after cross validation on test data*********************#
+
+evaluate_linear_test<- predict(fit.svm, test_data)
+plot_ly(x = ~evaluate_linear_test, type = "histogram")
+# plot_ly(x = ~evaluate_linear_test, type = "box")
+confusionMatrix(evaluate_linear_test, test_data$V1)
+
+```
+
+
+```{r rbf}
+#==================================Model_RBF================================================#
+Model_RBF <- ksvm(V1~ ., data = train_data, kernel = "rbfdot")
+Eval_RBF<- predict(Model_RBF, test_data)
+confusionMatrix(Eval_RBF,test_data$V1)
+
+#Accuracy : 0.9845 
+
+trainControl_rbf <- trainControl(method="cv", number=5)
+metric <- "Accuracy"
+set.seed(100)
+Model_RBF
+
+#cost C = 1
+#Hyperparameter : Gaussian Radial Basis kernel function. Hyperparameter : sigma =  0.00259482657617805 
+#Training error : 0.0035 
+
+# Making grid of "sigma" and C values.
+grid_rbf <- expand.grid(.sigma=c(0.025, 0.05), .C=c(0.1,0.5,1,2) )
+
+# Performing 5-fold cross validation
+fit.svm_rbf <- train(V1~ ., data=train_data, method="svmRadial", metric=metric,
+                        tuneGrid=grid_rbf, trControl=trainControl_rbf)
+
+# Printing cross validation result
+print(fit.svm_rbf)
+# Best tune at sigma = 0.025 & C=2, Accuracy -0.8737606
+
+# Plotting model results
+plot(fit.svm_rbf)
+
+```
+
+``` {r rbf checking_overfitting}
+#================================================================================================
+# Checking overfitting - Non-Linear - SVM
+#================================================================================================
+
+# Validating the model results on test data
+
+evaluate_rbf<- predict(fit.svm_rbf, test_data)
+plot_ly(x = ~evaluate_rbf, type = "histogram")
+# plot_ly(x = ~evaluate_rbf, type = "box")
+
+confusionMatrix(evaluate_rbf, test_data$V1)
+# Accuracy : 0.8628     
+
+```
+
+########################################Result#####################################################
+#So we have tested Linear as well as Polynomial model and according to the test results we can 
+#clearly see that Linear Model is best fitted for classifying handwritten digits
+
+
