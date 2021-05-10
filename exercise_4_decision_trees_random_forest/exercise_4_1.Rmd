@@ -68,7 +68,7 @@ id_pca_first_5 <- data.frame(id_pca_first_5) # Make it a data frame
 
 # Calculate starting entropy
 entBefore <- entropy(id) 
-
+par(mfrow=c(2,3)) 
 for( img in (1:5)){
   entList <- c() 
   xList <- c()  
@@ -231,7 +231,7 @@ plot(1:length(folds), errs_PCA, xlab="folds",ylab=sprintf("average error using k
 
 ################################################################# 4.2 Random Forests #################################################################
 ## 4.2 Create a Random Forest classifier and evaluate it using cross validation. Discuss the critical parameters of “randomForest” (e.g., number and depth of trees)
-```{r 4_2}
+```{r 4_2_randomforest}
 library(party)
 library(randomForest)
 library(rfUtilities)
@@ -256,17 +256,87 @@ plot(model.randomforest) # Error as a function of trees
 
 # 10-fold cross validation
 model.cv <- rf.crossValidation(x = model.randomforest, xdata = id, p = 0.1, n = 10) 
-
 # Plot cross validation verses model producers accuracy
 par(mfrow=c(1,2)) 
-plot(model.cv, type = "cv", main = "CV producers accuracy")
-plot(model.cv, type = "model", main = "Model producers accuracy")
+plot(model.cv, type = "cv", main = "accuracy from cv")
+plot(model.cv, type = "model", main = "accuracy from model")
 
 # Plot cross validation verses model oob
 par(mfrow=c(1,2)) 
-plot(model.cv, type = "cv", stat = "oob", main = "CV oob error")
-plot(model.cv, type = "model", stat = "oob", main = "Model oob error")
+plot(model.cv, type = "cv", stat = "oob", main = "oob error cross-validation")
+plot(model.cv, type = "model", stat = "oob", main = "oob error model")
+```
+```{r test}
+# plot(model.randomforest)
+# legend("top", colnames(model.randomforest$err.rate),col=1:11,cex=0.8,fill=1:11)
+
+library(data.table)
+library(ggplot2)
+
+# Get OOB data from plot and coerce to data.table
+oobData = as.data.table(plot(model.randomforest))
+
+# Define trees as 1:ntree
+oobData[, trees := .I]
+
+# Cast to long format
+oobData2 = melt(oobData, id.vars = "trees")
+setnames(oobData2, "value", "error")
+
+# Plot using ggplot
+ggplot(data = oobData2, aes(x = trees, y = error, color = variable)) + geom_line()
+
+graph2 +
+  geom_label_repel(data = filter(mydf, Quarter == second_to_last_quarter), 
+                   aes(label = State),
+                   nudge_x = .75,
+                   na.rm = TRUE) +
+  theme(legend.position = "none")
+
+
+onlyOOB <- oobData2[oobData2$variable == 'OOB', ]
+ggplot(data = onlyOOB, aes(x = trees, y = error, color = variable)) + geom_line()
 ```
 
+``` {r randomforests_p2}
+# https://www.statology.org/random-forest-in-r/
+
+#find number of trees that produce lowest test MSE
+which.min(model.randomforest$mse)
+
+#find RMSE of best model
+sqrt(model.randomforest$mse[which.min(model.randomforest$mse)]) 
+
+#plot the test MSE by number of trees
+plot(model.randomforest)
+
+#produce variable importance plot
+varImpPlot(model.randomforest) 
+
+# The x-axis displays the average increase in node purity of the regression trees based on splitting on the various predictors displayed on the y-axis.
+# From the plot we can see that Wind is the most important predictor variable, followed closely by Temp.
+```
+
+``` {r test}
+library(randomForest)
+library(rfUtilities)
+# For classification
+data(iris)
+iris$Species <- as.factor(iris$Species)    	
+set.seed(1234)	
+rf.mdl <- randomForest(iris[,1:4], iris[,"Species"], ntree=501) 
+rf.cv <- rf.crossValidation(rf.mdl, iris[,1:4], p=0.10, n=99, ntree=30)
+
+# Plot cross validation versus model producers accuracy
+par(mfrow=c(1,2)) 
+plot(rf.cv, type = "cv", main = "CV producers accuracy")
+plot(rf.cv, type = "model", main = "Model producers accuracy")
+
+# Plot cross validation versus model oob
+par(mfrow=c(1,2)) 
+plot(rf.cv, type = "cv", stat = "oob", main = "CV oob error")
+plot(rf.cv, type = "model", stat = "oob", main = "Model oob error")	 
+
+```
 
 

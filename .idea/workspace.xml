@@ -1,11 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="CMakeRunConfigurationManager" shouldGenerate="true" shouldDeleteObsolete="true">
+    <generated />
+  </component>
+  <component name="CMakeSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" CONFIG_NAME="Debug" />
+    </configurations>
+  </component>
   <component name="ChangeListManager">
-    <list default="true" id="43d99e09-96df-4981-bc96-de593eca7b58" name="Default Changelist" comment="" />
+    <list default="true" id="43d99e09-96df-4981-bc96-de593eca7b58" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/exercise_4_decision_trees_random_forest/exercise_4_1.Rmd" beforeDir="false" afterPath="$PROJECT_DIR$/exercise_4_decision_trees_random_forest/exercise_4_1.Rmd" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/exercise_4_decision_trees_random_forest/figures/000003 (1).png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/exercise_4_decision_trees_random_forest/figures/000003 (2).png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/exercise_4_decision_trees_random_forest/figures/comparison_cv.png" beforeDir="false" afterPath="$PROJECT_DIR$/exercise_4_decision_trees_random_forest/figures/comparison_cv.png" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -18,6 +35,9 @@
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="cf.first.check.clang-format" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../Advanced_Robot_Control/lecture_12/visualServoingExercise" />
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -27,7 +47,18 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1616608826443</updated>
+      <workItem from="1619435569841" duration="6000" />
+      <workItem from="1619679148437" duration="41000" />
     </task>
     <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="302" y="311" width="424" height="491" key="FileChooserDialogImpl" timestamp="1619679187380">
+      <screen x="72" y="27" width="1848" height="1053" />
+    </state>
+    <state x="302" y="311" width="424" height="491" key="FileChooserDialogImpl/72.27.1848.1053@72.27.1848.1053" timestamp="1619679187380" />
   </component>
 </project>
