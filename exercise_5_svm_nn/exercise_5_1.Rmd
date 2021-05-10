@@ -165,11 +165,19 @@ print(fit.svm)
 # Accuracy = 0.9725012
 
 # Plotting "fit.svm" results
-plot(fit.svm, ylim = c(0.9, 1))
-
+plot(fit.svm, ylim = c(0.97, 0.975))
+```
+```{r linear2}
 #**************# Valdiating the model after cross validation on test data*********************#
 
-evaluate_linear_test<- predict(fit.svm, test_data)
+timing_linear_v <- c()
+for (i in 1:10) {
+  t_start <- as.numeric(proc.time())
+  evaluate_linear_test<- predict(fit.svm, test_data)
+  timing_linear_v <- c(timing_linear_v, as.numeric(proc.time()) - t_start)
+}
+paste("mean of timing_linear_v = ", mean(timing_linear_v))
+
 plot_ly(x = ~evaluate_linear_test, type = "histogram")
 # plot_ly(x = ~evaluate_linear_test, type = "box")
 confusionMatrix(evaluate_linear_test, test_data$V1)
@@ -203,7 +211,7 @@ fit.svm_rbf <- train(V1~ ., data=train_data, method="svmRadial", metric=metric,
 
 # Printing cross validation result
 print(fit.svm_rbf)
-# Best tune at sigma = 0.025 & C=2, Accuracy -0.8737606
+# Best tune at sigma = 0.025 & C=2, Accuracy 0.8737606
 
 # Plotting model results
 plot(fit.svm_rbf)
@@ -216,6 +224,15 @@ plot(fit.svm_rbf)
 #================================================================================================
 
 # Validating the model results on test data
+
+timing_rbf_v <- c()
+for (i in 1:10) {
+  paste("i = ", i)
+  t_start <- as.numeric(proc.time())
+  evaluate_rbf<- predict(fit.svm_rbf, test_data)
+  timing_rbf_v <- c(timing_rbf_v, as.numeric(proc.time()) - t_start)
+}
+paste("mean of timing_rbf_v = ", mean(timing_rbf_v))
 
 evaluate_rbf<- predict(fit.svm_rbf, test_data)
 plot_ly(x = ~evaluate_rbf, type = "histogram")
@@ -230,4 +247,29 @@ confusionMatrix(evaluate_rbf, test_data$V1)
 #So we have tested Linear as well as Polynomial model and according to the test results we can 
 #clearly see that Linear Model is best fitted for classifying handwritten digits
 
+```{r compare both methods}
+# print(fit.svm)
+# Best tune at C = 0.1,
+# Accuracy = 0.9725012
 
+
+# print(fit.svm_rbf)
+# Best tune at sigma = 0.025 & C=2, Accuracy 0.8737606
+par(mfrow=c(1,2)) 
+barplot(c(0.9725012, 0.8737606),
+main = "accuraccy on the test data",
+xlab = "linear SVM            |            RBF SVM",
+# ylab = "",
+col = "darkgreen",
+horiz = FALSE,
+ylim=c(0, 1.1))
+mtext("linear [C = 0.1]            |            rbf [sigma = 0.025 & C=2]",side=3,line=-22.5,outer=TRUE)
+
+barplot(c(mean(timing_linear_v), mean(timing_rbf_v)),
+main = "prediction time",
+xlab = "linear SVM            |            RBF SVM",
+ylab = "time [ms]",
+col = "blue",
+horiz = FALSE)
+
+```
