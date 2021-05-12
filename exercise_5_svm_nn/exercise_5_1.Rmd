@@ -118,6 +118,9 @@ library(plotly)
 # train_mnist = mnist_trainData[train.indic, ]
 # test_mnist = mnist_testData[test.indic, ]
 
+load("../data/idList-co-100.Rdata")
+
+
 id <- do.call(rbind, idList[1:2])
 id <- as.data.frame(id)
 id[,1] <- factor(id[,1])
@@ -154,7 +157,7 @@ Model_linear
 # making a grid of C values.
 # grid <- expand.grid(C=seq(0.01, 0.5, by=1))
 grid <- expand.grid(C=c(0.01, 0.1, 0.2, 0.3, 0.4))
-
+# grid <- expand.grid(C=c(1, 10, 100, 500, 1000))
 # Performing 5-fold cross validation
 fit.svm <- train(V1~ ., data=train_data, method="svmLinear", metric=metric,
                  tuneGrid=grid, trControl=trainControl)
@@ -166,6 +169,7 @@ print(fit.svm)
 
 # Plotting "fit.svm" results
 plot(fit.svm, ylim = c(0.97, 0.975))
+# plot(fit.svm)
 ```
 ```{r linear2}
 #**************# Valdiating the model after cross validation on test data*********************#
