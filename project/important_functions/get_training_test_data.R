@@ -20,7 +20,8 @@ get_training_test_data_allin <- function(data, training_percent){
   data_shuffled <- data[sample(nrow(data)),]
   
   # get half of people as training and half as test
-  last_training_row = training_percent / 100 * nrow(data_shuffled)
+  last_training_row = floor(training_percent / 100 * nrow(data_shuffled))
+  # train_data_limit <- floor(nrow(id_dataset)/2)
   
   id_train_shuffled <- data_shuffled[1:(last_training_row), ]
   id_test_shuffled <- data_shuffled[(last_training_row+1):nrow(data_shuffled), ]
