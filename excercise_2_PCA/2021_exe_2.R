@@ -41,7 +41,7 @@ plot(Cumulative, type="o", col="red")
 
 ######################################################## Exercise 2.1.2 & 2.1.3 #################################################################
 
-load("idList-co-100.Rdata")
+load("data/idList-co-100.Rdata")
 
 id <- do.call(rbind, idList[1:10])
 id <- as.data.frame(id)
