@@ -62,3 +62,39 @@ get_k_clustered_cipher_data <- function(data, n_cluster){
 clustered_test_data <- get_k_clustered_cipher_data(data=id_test, n_cluster=100)
 
 ```
+
+```{r test}
+
+source("important_functions/load_data_id.R")
+source("important_functions/get_normalized_data.R")
+source("important_functions/get_training_test_data.R")
+source("important_functions/view_data.R")
+source("important_functions/get_k_clustered_cipher_data.R")
+
+
+#loading data
+id <- load_data_id()
+
+# normalizing
+id_norm <- get_normalized_data(id)
+
+# gaussian smoothing
+#TODO!
+
+# splitting data disjunct
+data_train_test_disjunct <- get_training_test_data_disjunct(data=id_norm)
+train_data_disjunct <- data_train_test_disjunct[[1]]
+test_data_disjunct <- data_train_test_disjunct[[2]]
+
+
+# splitting data all persons in
+data_train_test_allin <- get_training_test_data_allin(data=id_norm, training_percent=70)
+train_data_allin <- data_train_test_allin[[1]]
+test_data_allin <- data_train_test_allin[[2]]
+
+# view random row
+view_data(train_data_allin)
+
+
+
+```
