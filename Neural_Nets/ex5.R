@@ -61,21 +61,41 @@ trainingClass <- as.data.frame(nnTrainingClass)
 ############################################################################################
 
 
-train_mlp <- function(training_data, training_classes, hidden_layers) {
+# train_mlp <- function(training_data, training_classes, hidden_layers) {
+#   
+#   network <- mlp(id_train[,-1], training_classes, size = hidden_layers, maxit = 200, hiddenActFunc = "Act_TanH", 
+#                  learnFunc="Std_Backpropagation", learnFuncParams = c(0.01,0))
+#   
+#   plot(network)
+#   
+#   plotIterativeError(network)
+#   
+#   network$IterativeFitError[200]
+#   
+#   return(network)
+# }
+# 
+# network <- train_mlp(id_train, trainingClass, c(120,120,120))
+
+# network <- mlp(id_train[,-1], trainingClass, size = c(120,120,120), maxit = 300, hiddenActFunc = "Act_TanH", learnFunc="Std_Backpropagation", learnFuncParams = c(0.01,0)) 
+# plot(network)
+# plotIterativeError(network) # Plot the training error
+
+train_mlp <- function(training_data, training_classes, size) {
   
-  network <- mlp(id_train[,-1], training_classes, size = hidden_layers, maxit = 200, hiddenActFunc = "Act_TanH", 
-                 learnFunc="Std_Backpropagation", learnFuncParams = c(0.01,0))
+  #network <- mlp(id[,-1], trainingClass, size = c(2,2,2), maxit = 2, hiddenActFunc = "Act_TanH", learnFunc="Std_Backpropagation", learnFuncParams = c(0.01,0))
   
-  plot(network)
+  network <- mlp(id_train[,-1], training_classes, size = size, maxit = 300, hiddenActFunc = "Act_TanH", learnFunc="Std_Backpropagation", learnFuncParams = c(0.01,0))
   
   plotIterativeError(network)
   
-  network$IterativeFitError[200]
+  network$IterativeFitError[300]
   
   return(network)
 }
 
-network <- train_mlp(id_train, trainingClass, c(120,120,120))
+network <- train_mlp(id_train, trainingClass, c(5, 5))
+
 
 ############################################################################################
 ## 5.2.3
