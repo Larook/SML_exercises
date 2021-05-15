@@ -1,7 +1,4 @@
 
-#id <- do.call(rbind, idList[1:13])
-# id <- idList[[5]]
-
 get_img_rot <- function(dataset, id_no){
   # modified code that we got in exercise, put only dataset and id of number
   id_mat <- data.matrix(dataset, rownames.force = NA)
@@ -18,13 +15,14 @@ get_img_rot <- function(dataset, id_no){
   image <- rotate(image)
 }
 
-view_data <- function(data){
+get_cipher_image <- function(data, row_id){
+  return( image(get_img_rot(dataset=data, id_no=row_id), col = gray(0:100/100) ) )
+}
 
-  return( image(get_img_rot(data, cipherNumber), col = gray(0:100/100) ) )
-  
-  
-  
+# view_data <- function(data){
 # Zouchi's code not working
+#id <- do.call(rbind, idList[1:13])
+# id <- idList[[5]]
 # data <- id
 # 
 #   for (num in 0:9) {
@@ -47,7 +45,7 @@ view_data <- function(data){
 #     
 #     image(img,col=gray(0:100/100) )
 #   }
-}
+# }
 
 
 
