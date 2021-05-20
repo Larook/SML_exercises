@@ -12,6 +12,15 @@ library(dplyr)
 library(ggplot2)
 library(gridExtra)
 
+
+library(kernlab)
+library(readr)
+library(caret)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(plotly)
+
 ```
 
 ## 5.1.1 train_dataa SVM classifier on the data, and evaluate the performance of the classifier. For example, you can do a disjunct study: half data as the training data and the other half as the test data.
@@ -145,7 +154,7 @@ test_data <- id[-train_ind, ]
 Model_linear <- ksvm(V1~ ., data = train_data, scale = FALSE, kernel = "vanilladot")
 Eval_linear<- predict(Model_linear, test_data)
 test_confusion <- confusionMatrix(Eval_linear, test_data$V1)
-paste("confusionMatrix(datasetTest,test$V1) = ", test_confusion$overall[1])
+# paste("confusionMatrix(datasetTest,test$V1) = ", test_confusion$overall[1])
 # Accuracy    :  0.972
 
 #______________We use train_datafunction from caret package to perform crossvalidation______________#
