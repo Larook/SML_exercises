@@ -3,66 +3,6 @@ title: "testing of the R functions"
 output: pdf_document
 ---
 
-```{r setup, include=FALSE}
-library(gmodels)
-library(class)
-library(caret)
-library(swirl)
-library(ggplot2)
-library(spatstat)
-```
-
-
-```{r test}
-
-source("important_functions/load_data_id.R")
-source("important_functions/get_training_test_data.R")
-
-source("important_functions/get_normalized_data.R")
-source("important_functions/get_gaussian_smoothed_data.R")
-source("important_functions/view_data.R")
-
-source("important_functions/get_k_clustered_cipher_data.R") 
-source("important_functions/get_PCA_reduced_data.R") 
-# 
-# 
-# #loading data
-# id <- load_data_id(load_full=FALSE)
-# get_cipher_image(data=id, row_id=640)
-# 
-# # normalizing
-# id_norm <- get_normalized_data(id)
-# get_cipher_image(data=id_norm, row_id=640)
-# 
-# # gaussian smoothing
-# id_smooth <- get_gaussian_smoothed_data(dataset=id, smooth_sigma=0.05)
-# get_cipher_image(data=id_smooth, row_id=640)
-# 
-# 
-# # splitting data disjunct
-# data_train_test_disjunct <- get_training_test_data_disjunct(data=id_norm)
-# train_data_disjunct <- data_train_test_disjunct[[1]]
-# test_data_disjunct <- data_train_test_disjunct[[2]]
-# 
-# # PCA
-# pca_obj <- get_pca_obj(train_data_disjunct)
-# id_pca <- get_PCA_reduced_data(labels=train_data_disjunct$V1, pca_obj=pca_obj, searched_accum_var=80)
-# show_pca_reconstruction(pca_obj, cipher=70)
-# 
-# # splitting data all persons in
-# data_train_test_allin <- get_training_test_data_allin(data=id_norm, training_percent=70)
-# train_data_allin <- data_train_test_allin[[1]]
-# test_data_allin <- data_train_test_allin[[2]]
-# 
-# # view random row
-# get_cipher_image(data=train_data_allin, row_id=2)
-# 
-# # try k-means
-# train_data_allin_kmeans <- get_k_clustered_cipher_data(data=train_data_allin_kmeans, n_cluster=1)
-# get_cipher_image(data=train_data_allin_kmeans, row_id=1)
-
-```
-
 ```{r load libraries and dataset}
 
 library(gmodels)
@@ -110,16 +50,16 @@ source("important_functions/get_PCA_reduced_data.R")
 id <- load_data_id(load_full=FALSE)
 
 # preprocessing options
-id_smooth <- get_gaussian_smoothed_data(dataset=id, smooth_sigma=0.05)
-# id_norm <- get_normalized_data(id)
+# id_smooth <- get_gaussian_smoothed_data(dataset=id, smooth_sigma=0.05)
+id_norm <- get_normalized_data(id)
 
 # which of the preprocessing to use
-id_use <- id_smooth
-# id_use <- id_norm
+# id_use <- id_smooth
+id_use <- id_norm
 # id_use <- id
 
 # split to train and test dataset
-data_train_test_allin <- get_training_test_data_allin(data=id_use, training_percent=70)
+data_train_test_allin <- get_training_test_data_allin(data=id_use, training_percent=50)
 train_data_allin <- data_train_test_allin[[1]]
 test_data_allin <- data_train_test_allin[[2]]
 
@@ -136,8 +76,6 @@ test_data_disjunct <- data_train_test_disjunct[[2]]
 
 id_train <-train_data_disjunct
 id_test <- test_data_disjunct
-
-
 ```
 
 ```{r }
@@ -152,75 +90,27 @@ id_test <- test_data_disjunct
 ## corresponding class as the example shown below (eg. cyper '0' is represented by '1000000000').
 #######################################################################################################
 
-lev <- levels(id_train$V1) # Number of classes
+source("NN_functions/mlp_functions.R") 
 
-# Create a list probabilities, for all labels
-nnTrainingClass <- matrix(nrow = length(id_train$V1), ncol = 10, data = 0) 
+trainingClass <- get_training_class(training_data=id_train)
 
-for(i in 1:length(id_train$V1)) { # Set probabilities to one for matching class
-  matchList <- match(lev,toString(id_train$V1[i]))
-  matchList[is.na(matchList)] <- 0
-  nnTrainingClass[i,] <- matchList
-}
-trainingClass <- as.data.frame(nnTrainingClass)
+################# test creation of the 1,2,3 hidden layers MLPs #################
 
-```
-
-```{r }
-############################################################################################
-## 5.2.2
-## Train a neural network with N inputs and 10 outputs, based on the modified training data.
-############################################################################################
-
-train_mlp <- function(training_data, training_classes, size) {
-  
-  #network <- mlp(id[,-1], trainingClass, size = c(2,2,2), maxit = 2, hiddenActFunc = "Act_TanH", learnFunc="Std_Backpropagation", learnFuncParams = c(0.01,0))
-  
-  network <- mlp(training_data[,-1], training_classes, size = size, maxit = 300, hiddenActFunc = "Act_TanH", learnFunc="Std_Backpropagation", learnFuncParams = c(0.01,0))
-  
-  plotIterativeError(network)
-  
-  network$IterativeFitError[300]
-  
-  return(network)
-}
-
-# network <- train_mlp(id_train, trainingClass, c(5, 5))
 network <- train_mlp(id_train, trainingClass, 3)
-```
 
-```{r }
-############################################################################################
-## 5.2.3
-## Evaluate the neural network with the test data.
-############################################################################################
-evaluate_nn <- function(network, test_data) { 
-  # check if this is working!
-  
-  predictions <- predict(network, test_data[,-1])
-  
-  #You can use the following code to convert the mlp output into class labels (0 - 9)
-  responselist <- matrix(nrow = length(predictions[,1]), ncol = 1, data = "Na")
-  for(i in 1:nrow(predictions)) {
-    responselist[i,] <- toString( which(predictions[i,]==max(predictions[i,])) - 1 )
-    
-  }
-  responselist <- data.frame(responselist)
-  responselist[,1] <- as.factor(responselist[,1])
-  
-  # Calculating the accuracy
-  cf <- confusionMatrix(responselist[,1], test_data[,1])
-  return( sum(diag(cf))/sum(cf) )
-  
-}
+# network <- train_mlp(id_train, trainingClass, c(2, 2))
+
+# network <- train_mlp(id_train, trainingClass, c(2, 2, 2))
 
 
+################# evaluate the network
 evaluate_nn(network, id_test)
+
 ```
 
+
 ```{r }
-######################## One hidden layer #########################################################
-####################################################################################################
+######################## One hidden layer - check
 accuracyTestList <- c()
 accuracyTrainingList <- c()
 runtimeList <- c()
@@ -233,7 +123,6 @@ for (i in 1:length(neurons)) {
   neurons_now <- neurons[i]
   
   network <- train_mlp(id_train, trainingClass, neurons_now)
-  # network <- train_mlp(id_train, trainingClass, c(5, 5))
   
   end_time <- Sys.time()
   runtimeList[i] <- difftime(Sys.time(), start_time, units = "secs")
@@ -270,7 +159,7 @@ https://www.r-bloggers.com/2015/09/fitting-a-neural-network-in-r-neuralnet-packa
 # Now the net. Note that I am splitting the data in this way: 90% train set and 10% test set in a random way for 10 times. I am also initializing a progress bar using the plyr
 #library because I want to keep an eye on the status of the process since the fitting of the neural network may take a while.
 
-data <- id_use
+
 
 set.seed(450)
 cv.error <- NULL
@@ -278,31 +167,140 @@ k <- 10
 library(plyr) 
 pbar <- create_progress_bar('text')
 pbar$init(k)
-for(i in 1:k){
-    index <- sample(1:nrow(data), round(0.9*nrow(data)))
-    train.cv <- data[index,]
-    test.cv <- data[-index,]
+
+
+
+
+nn_sizes_check <- c(1, c(1,1), c(1,1,1))
+
+nn_size_list <- c()
+accuracy_test_list <- c()
+accuracy_training_list <- c()
+time_training_list <- c()
+time_eval_list <- c()
+
+
+data <- id_use
+for (nn_size in nn_sizes_check){
+  
+  folds <- createFolds(data[,1], k = 10)
+  for(i in 1:10){
+    nn_size_list[i] <- nn_size
     
-    nn <- train_mlp(train.cv, trainingClass, 5)
+    train.cv <- data[-folds[[i]], ]
+    test.cv <- data[folds[[i]], ]
     
-    # nn <- neuralnet(f,data=train.cv,hidden=c(5,2),linear.output=T)
-    # 
-    # pr.nn <- compute(nn,test.cv[,1:13])
-    # pr.nn <- pr.nn$net.result*(max(data$medv)-min(data$medv))+min(data$medv)
-    # 
-    # test.cv.r <- (test.cv$medv)*(max(data$medv)-min(data$medv))+min(data$medv)
-    # 
-    # cv.error[i] <- sum((test.cv.r - pr.nn)^2)/nrow(test.cv)
-    # 
-    # nn <- network()
+    # train the MLP
+    start_time <- Sys.time()
+    training_class <- get_training_class(training_data = train.cv)
+    nn <- train_mlp(training_data=train.cv, training_classes=training_class, size=nn_size)
+    time_training_list[i] <- difftime(Sys.time(), start_time, units = "secs")
     
+    # evaluate MLP
+    start_time <- Sys.time()
+    accuracy_test_list[i] <- evaluate_nn(network, test.cv)
+    time_eval_list[i] <- difftime(Sys.time(), start_time, units = "secs")
+    
+    accuracy_training_list[i] <- evaluate_nn(network, train.cv)
+  
     pbar$step()
+  }
+  
+  # save results to DF of 1 mlp configuration
+  
+  # 
+  
+  
 }
 
+mlp_evaluation_data <-data.frame(list(
+  'nn_size' = nn_size_list, 
+  'accuraccy_test' = accuracy_test_list, 
+  'accuracy_training' = accuracy_training_list,
+  'time_training' = time_training_list,
+  'time_eval' = time_eval_list
+  ))
+
+
+```
+```{r }
+nn_sizes_check_a <- list( c(1), c(1,1), c(1,1,1))
+nn_size_list <- c()
+
+
+for (nn_size in nn_sizes_check_a){
+  layer_1 <- nn_size[1]
+  layer_2 <- nn_size[2]
+  layer_3 <- nn_size[3]
+  print(nn_size)
+ 
+  
+  layers_now <- c(layer_1, layer_2, layer_3)[!is.na(c(layer_1, layer_2, layer_3))]
+  
+  if (is.na(layer_1)){
+    layer_1 = 0
+  }
+  if (is.na(layer_2)){
+    layer_2 = 0
+  }
+  if (is.na(layer_3)){
+    layer_3 = 0
+  }
+  print(layer_1)
+  print(layer_2)
+  print(layer_3)
+  
+  
+  
+  print("layers_now")
+  print(layers_now)
+  
+  
+  nn_size_l1 <- c()
+  nn_size_l2 <- c()
+  nn_size_l3 <- c()
+
+  
+  a <- train_mlp(training_data=train.cv, training_classes=training_class, size=layers_now)
+  for(i in 1:10){
+    # main CV here
+      # a <- train_mlp(training_data=train.cv, training_classes=training_class, size=layers_now)
+    
+    nn_size_l1[i] <- layer_1
+    nn_size_l2[i] <- layer_2
+    nn_size_l3[i] <- layer_3
+  }
+  
+  mlp_tmp <-data.frame(list(
+  'nn_size_l1' = nn_size_l1, 
+  'nn_size_l2' = nn_size_l2, 
+  'nn_size_l3' = nn_size_l3 ))
+
+}
 
 
 ```
 
+Z```{r }
+nn_sizes_check_a <- list( c(1), c(1,1), c(1,1,1))
+
+for (nn_size in nn_sizes_check_a){
+  layer_1 <- nn_size[1]
+  layer_2 <- nn_size[2]
+  layer_3 <- nn_size[3]
+  print(nn_size)
+  print(layer_1)
+  print(layer_2)
+  print(layer_3)
+  
+  
+  layers_now <- c(layer_1, layer_2, layer_3)[!is.na(c(layer_1, layer_2, layer_3))]
+  print("layers_now")
+  print(layers_now)
+  a <- train_mlp(training_data=train.cv, training_classes=training_class, size=layers_now)
+}
+
+```
 
 ```{r }
 ######################## Two hidden layers #########################################################
