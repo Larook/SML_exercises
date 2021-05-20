@@ -1,0 +1,67 @@
+---
+title: "testing of the R functions"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(gmodels)
+library(class)
+library(caret)
+library(swirl)
+library(ggplot2)
+library(spatstat)
+```
+
+
+```{r test}
+
+source("important_functions/load_data_id.R")
+source("important_functions/get_training_test_data.R")
+
+source("important_functions/get_normalized_data.R")
+source("important_functions/get_gaussian_smoothed_data.R")
+source("important_functions/view_data.R")
+
+source("important_functions/get_k_clustered_cipher_data.R") 
+source("important_functions/get_PCA_reduced_data.R") 
+
+
+#loading data
+id <- load_data_id(load_full=FALSE)
+get_cipher_image(data=id, row_id=640)
+
+# normalizing
+id_norm <- get_normalized_data(id)
+get_cipher_image(data=id_norm, row_id=640)
+
+# gaussian smoothing
+id_smooth <- get_gaussian_smoothed_data(dataset=id, smooth_sigma=0.05)
+get_cipher_image(data=id_smooth, row_id=640)
+
+
+# splitting data disjunct
+data_train_test_disjunct <- get_training_test_data_disjunct(data=id_norm)
+train_data_disjunct <- data_train_test_disjunct[[1]]
+test_data_disjunct <- data_train_test_disjunct[[2]]
+
+# PCA
+pca_obj <- get_pca_obj(train_data_disjunct)
+id_pca <- get_PCA_reduced_data(labels=train_data_disjunct$V1, pca_obj=pca_obj, searched_accum_var=80)
+show_pca_reconstruction(pca_obj, cipher=70)
+
+# splitting data all persons in
+data_train_test_allin <- get_training_test_data_allin(data=id_norm, training_percent=70)
+train_data_allin <- data_train_test_allin[[1]]
+test_data_allin <- data_train_test_allin[[2]]
+
+# view random row
+get_cipher_image(data=train_data_allin, row_id=2)
+
+# try k-means
+train_data_allin_kmeans <- get_k_clustered_cipher_data(data=train_data_allin_kmeans, n_cluster=1)
+get_cipher_image(data=train_data_allin_kmeans, row_id=1)
+
+
+
+
+```

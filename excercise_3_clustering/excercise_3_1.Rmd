@@ -1,0 +1,824 @@
+---
+title: "Exercise_3_clustering"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gmodels)
+library(class)
+library(caret)
+library(swirl)
+
+#loading libraries and dataset
+library(data.table) # working with ranges 
+library(tidyverse)  # data manipulation
+library(cluster)    # clustering algorithms
+library(factoextra) # clustering algorithms & visualization
+
+# load('../data/id100.Rda') # dataset
+```
+
+```{r plot functions}
+# get accuracy of the labels in percents
+get_accuracy <- function(predicted_labels, test_labels){
+  # accuracy(table(numbers_test_pred,id_test_labels))
+  tab <- table(predicted_labels, test_labels)
+  sum(diag(tab)/(sum(rowSums(tab)))) * 100
+}
+
+library(ggplot2)
+knn_get_kmeans_plot_cv_data <- function(test_data, test_labels, train_data, train_labels, fold_no, k, title_info){
+  # dont print training data validation when doing cross validation
+      
+    test_time_v <- c()
+    test_accuracy_v <- c()
+    train_accuracy_v <- c()
+    
+    for (rep in c(1:10)){
+      t_start <- as.numeric(proc.time())
+      # get the prediction
+      numbers_test_pred <- knn(train = train_data, test = test_data, cl = train_labels, k=k)
+      t_end <- as.numeric(proc.time())
+      delta_t <- (t_end -  t_start)[3]  # seconds
+      test_time_v <- c(test_time_v, delta_t)
+      #print(test_time_v)
+      
+      # see the performance on testing data
+      k_accuracy_test <-get_accuracy(test_labels, numbers_test_pred)
+      test_accuracy_v <- c(test_accuracy_v, k_accuracy_test)
+
+    }
+    
+    return(list("title_info"=title_info, "k"=k, "fold_no"=fold_no,"test_time_v"=test_time_v, "test_accuracy_v"=test_accuracy_v))
+}
+
+# change plot data to cv plotting appropriate data
+get_cv_plot_data_kmeans <- function(plot_data_ks_l){
+  # TODO: finish saving the data for cross validation
+  df_goal <- data.frame()
+  df_tmp <- data.frame(Reduce(rbind, plot_data_ks_l))
+  # take all with k=3 and sum
+  for (k in ks){
+    df_k <- df_tmp[df_tmp$k==k,]
+    # sum the test_time_v and test_accuracy_v
+    time_v_sum <- rep(0, 10) # 10 repetitions
+    acc_v_sum <- rep(0, 10)
+    for (i in 1:nrow(df_k)){
+      time_v_sum <- time_v_sum + unlist(df_k$test_time_v[i])
+      acc_v_sum <- acc_v_sum + unlist(df_k$test_accuracy_v[i])
+    }
+    time_v_avg <- time_v_sum / nrow(df_k)
+    acc_v_avg <- acc_v_sum / nrow(df_k)
+    df_row_k <- data.frame(df_k$title_info[1], k, mean(time_v_avg), sd(time_v_avg), mean(acc_v_avg), sd(acc_v_avg))
+    names(df_row_k) <- c('title_info', 'k', 'mean_time', 'sd_time', 'mean_acc', 'sd_acc')
+    df_goal <-rbind(df_goal, df_row_k)
+  }
+  return(df_goal)
+}
+
+
+# Plot all the results given the data
+plot_results_cv_kmeans <- function(plot_data_ks_l){
+  
+  # translate average data to the cv
+  df_cv_plot <- get_cv_plot_data_kmeans(plot_data_ks_l)
+  
+  main <- paste("Cross validation with 10 folds. Number of initial clusters = ", df_cv_plot$title_info)
+  
+  g_time <- ggplot(df_cv_plot, aes(x=ks)) + 
+    geom_line(aes(y=mean_time)) + 
+    geom_ribbon(aes(ymax=mean_time+sd_time, ymin=mean_time-sd_time), fill="pink", alpha=.5) +
+    labs(title=main, 
+         subtitle="execution time knn", 
+         caption="Source: abcd", 
+         y="time [ms]",
+         x="k-number of nearest neighbours") 
+  
+  g_accuracy <- ggplot(df_cv_plot, aes(x=ks)) + 
+    geom_line(aes(y=mean_acc, color="darkgreen")) + 
+    geom_ribbon(aes(ymax=mean_acc+sd_acc, ymin=mean_acc-sd_acc), fill="green", alpha=.5) +
+  labs(title=main, 
+         subtitle="accuracy of knn", 
+         caption="Source: abcd", 
+         y="accuracy [%]",
+         x="k-number of nearest neighbours")
+  
+  list_of_plots <- list(g_time, g_accuracy)
+  
+  return(list_of_plots)
+}
+
+
+# without KMEANS
+plot_results_cv_knn <- function(plot_data_ks_l){
+  
+  # translate average data to the cv
+  df_cv_plot <- get_cv_plot_data_kmeans(plot_data_ks_l)
+  
+  main <- paste("Cross validation with 10 folds. Pure knn without kmeans clustering")
+  
+  g_time <- ggplot(df_cv_plot, aes(x=ks)) + 
+    geom_line(aes(y=mean_time)) + 
+    geom_ribbon(aes(ymax=mean_time+sd_time, ymin=mean_time-sd_time), fill="pink", alpha=.5) +
+    labs(title=main, 
+         subtitle="execution time knn", 
+         caption="Source: abcd", 
+         y="time [ms]",
+         x="k-number of nearest neighbours") 
+  
+  g_accuracy <- ggplot(df_cv_plot, aes(x=ks)) + 
+    geom_line(aes(y=mean_acc, color="darkgreen")) + 
+    geom_ribbon(aes(ymax=mean_acc+sd_acc, ymin=mean_acc-sd_acc), fill="green", alpha=.5) +
+  labs(title=main, 
+         subtitle="accuracy of knn", 
+         caption="Source: abcd", 
+         y="accuracy [%]",
+         x="k-number of nearest neighbours")
+  
+  list_of_plots <- list(g_time, g_accuracy)
+  
+  return(list_of_plots)
+}
+
+
+
+# down sample the data using k_means clustering
+get_k_means_clustered_data <- function(dataset, k_init_clusters){
+  cipher_cluster <- c()
+  label_cluster <- c()
+
+  for( digit in 0:9) {
+  # digit <- 0
+    digit_data <- dataset[ dataset[, 1] == digit, ]
+    clusterData <- kmeans(digit_data, centers=k_initial_clusters)
+    cipher_cluster[[digit + 1]] <- clusterData$centers
+    label_cluster[[digit + 1]] <- c(1:k_initial_clusters)*0 + digit
+  }
+  # train_lab <- factor(unlist(label_cluster))
+  train_dat <- do.call(rbind, cipher_cluster)
+  return(train_dat)
+}
+
+
+```
+
+# Exercise 3.1 K-means clustering:
+
+## Try to improve the performance of two persons training data ( disjunct ). 
+Perform K- means clustering of each cipher individually for the training set, in order to represent the training data as a number of cluster centroids. Now perform the training of the k-NN using the centroids of these clusters. You can try with different cluster sizes and see the resulting performance.
+``` {r load data}
+
+number_of_people <- 2
+
+load("../data/idList-cornered-100-2021.Rdata") 
+id <- do.call(rbind, idList[1:number_of_people])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+
+set.seed(2345)
+# for every fold check all the K's
+ks <- c(3,5,10)
+initial_clusters_numbers <- c(50, 75, 100, 125, 150)
+
+# load whole data
+# get 1 person as training, 2nd as testing
+# ============== dont know if this part is needed
+# train_data_limit <- floor(nrow(id)/2)
+# 
+# test_rows_id <- 1:(train_data_limit)
+# train_rows_id <- (train_data_limit + 1) : nrow(id)
+# 
+# training_data <- id[train_rows_id, ]
+# testing_data <- id[test_rows_id, ]
+# train_kmeans_data <- get_k_means_clustered_data(training_data, k_initial_clusters)
+# test_kmeans_data <- get_k_means_clustered_data(testing_data, k_initial_clusters)
+# ==============================================
+
+
+k_initial_clusters <- 100
+
+# reduce the dimensions of data using k-means
+whole_kmeans_data <- get_k_means_clustered_data(id, k_initial_clusters)
+```
+
+## 3.1.2 Compare your KNN performance based on the raw training data and based on the cluster centroids of the training data. 
+During the comparison you should also consider the run times of the algorithm. As the generation of clusters is based on random starting points cross-validation should be performed.
+
+do the training of the k-NN using the centroids (new data)
+``` {r test of the knn using the kmeans data using cross-validation}
+
+# perform the whole cross validation on the dataset using k from ks
+get_cross_validation_kmeans_plot_data_lists <- function(dataset, ks, number_of_folds, k_initial_clusters){
+  plot_data_ks_l <- list()
+  # do the folds
+  folds <- createFolds(dataset[, 1], k = number_of_folds)
+  fold_no <- 0 # just for printing the progress
+  #current fold - to ignore in training data but to use as a validation dataset: fold -> test!
+  for (fold in folds){
+    fold_no <- fold_no + 1
+    print(paste0("fold_no =", fold_no))
+    
+    fold <- sample(fold) # shuffle id numbers of fold 
+    
+    not_f_df <- get_k_means_clustered_data(dataset[-fold, ], k_initial_clusters) #training data
+    f_df <- get_k_means_clustered_data(dataset[fold, ], k_initial_clusters) #test data
+  
+    # predict with KNN - test all k's for each fold
+    k_no <- 0 # just to keep track
+    for (k in ks){
+        k_no <- k_no + 1
+        print(paste0("      k =", k))      
+        # f_test_pred <- knn(train = not_f_df[,c(2:ncol(not_f_df))], test = f_df[,c(2:ncol(f_df))], cl = not_f_df[,1], k=k)
+  
+        plot_data <- knn_get_kmeans_plot_cv_data(test_data=f_df[,c(2:ncol(f_df))], test_labels=f_df[,1],
+                                           train_data=not_f_df[,c(2:ncol(not_f_df))], train_labels=not_f_df[,1],
+                                           fold_no=fold_no, k=k, title_info = k_initial_clusters)
+        #print(plot_data)
+        plot_data_ks_l <- append(plot_data_ks_l, list(plot_data))
+    }
+  }
+  return(plot_data_ks_l)
+}
+
+
+# perform the whole cross validation on the dataset using k from ks
+get_cross_validation_plot_data_lists <- function(dataset, ks, number_of_folds){
+  plot_data_ks_l <- list()
+  # do the folds
+  folds <- createFolds(dataset[, 1], k = number_of_folds)
+  fold_no <- 0 # just for printing the progress
+  #current fold - to ignore in training data but to use as a validation dataset: fold -> test!
+  for (fold in folds){
+    fold_no <- fold_no + 1
+    print(paste0("fold_no =", fold_no))
+    
+    fold <- sample(fold) # shuffle id numbers of fold 
+    
+    # use not-fold data as training and fold data as test
+    not_f_df <- dataset[ -fold, ] #training data
+    f_df <- dataset[ fold, ] #test data
+  
+    # predict with KNN - test all k's for each fold
+    k_no <- 0 # just to keep track
+    for (k in ks){
+        k_no <- k_no + 1
+        print(paste0("      k =", k))      
+        # f_test_pred <- knn(train = not_f_df[,c(2:ncol(not_f_df))], test = f_df[,c(2:ncol(f_df))], cl = not_f_df[,1], k=k)
+  
+        plot_data <- knn_get_kmeans_plot_cv_data(test_data=f_df[,c(2:ncol(f_df))], test_labels=f_df[,1],
+                                           train_data=not_f_df[,c(2:ncol(not_f_df))], train_labels=not_f_df[,1],
+                                           fold_no=fold_no, k=k, title_info = k_initial_clusters)
+        #print(plot_data)
+        plot_data_ks_l <- append(plot_data_ks_l, list(plot_data))
+    }
+  }
+  return(plot_data_ks_l)
+}
+
+# perform the whole cross validation WITHOUT KMEANS
+get_cross_validation_nokmeans_plot_data_lists <- function(dataset, ks, number_of_folds){
+  plot_data_ks_l <- list()
+  # do the folds
+  folds <- createFolds(dataset[, 1], k = number_of_folds)
+  fold_no <- 0 # just for printing the progress
+  #current fold - to ignore in training data but to use as a validation dataset: fold -> test!
+  for (fold in folds){
+    fold_no <- fold_no + 1
+    print(paste0("fold_no =", fold_no))
+    
+    fold <- sample(fold) # shuffle id numbers of fold 
+    
+    # use not-fold data as training and fold data as test
+    not_f_df <- dataset[ -fold, ] #training data
+    f_df <- dataset[ fold, ] #test data
+  
+    # predict with KNN - test all k's for each fold
+    k_no <- 0 # just to keep track
+    for (k in ks){
+        k_no <- k_no + 1
+        print(paste0("      k =", k))      
+        # f_test_pred <- knn(train = not_f_df[,c(2:ncol(not_f_df))], test = f_df[,c(2:ncol(f_df))], cl = not_f_df[,1], k=k)
+  
+        plot_data <- knn_get_kmeans_plot_cv_data(test_data=f_df[,c(2:ncol(f_df))], test_labels=f_df[,1],
+                                           train_data=not_f_df[,c(2:ncol(not_f_df))], train_labels=not_f_df[,1],
+                                           fold_no=fold_no, k=k, title_info = k_initial_clusters)
+        #print(plot_data)
+        plot_data_ks_l <- append(plot_data_ks_l, list(plot_data))
+    }
+  }
+  return(plot_data_ks_l)
+}
+
+
+```
+
+```{r all in one NOT reduced dataset}
+plot_indicator<-0 
+
+ks <- c(3,5,10)
+# initial_clusters_numbers <- c(50, 75, 100, 125, 150)
+
+# do once without initial clusters
+plot_data_ks_l_nonkmean <- get_cross_validation_nokmeans_plot_data_lists(dataset=id, ks=ks, number_of_folds=number_of_people)
+plot_list <- plot_results_cv_knn(plot_data_ks_l_nonkmean)
+
+save_path <- "figures/3_1/cross_valid_without_kmeans/"
+
+for (plot in plot_list){
+  plot_indicator<-plot_indicator+1
+  print(plot)
+  ggsave(paste(save_path, "cv_knn_", plot_indicator, ".png"), plot = plot,
+  width = 15, height = 10, units = "cm")
+}
+```
+
+``` {r kmeans reduced}
+plot_indicator<-0 
+for (k_initial_clusters in initial_clusters_numbers){
+  # reduce the dimensions of data using k-means
+
+  plot_data_ks_l <- get_cross_validation_kmeans_plot_data_lists(dataset=id, ks=ks, number_of_folds=number_of_people, k_initial_clusters = k_initial_clusters)
+  plot_list <- plot_results_cv_kmeans(plot_data_ks_l)
+  
+  save_path <- "figures/3_1/cross_valid_kmeans/"
+  
+  for (plot in plot_list){
+    plot_indicator<-plot_indicator+1
+    print(plot)
+    ggsave(paste(save_path, "cv_kmeans_", plot_indicator, ".png"), plot = plot,
+         width = 15, height = 10, units = "cm")
+  }
+}
+
+
+```
+
+
+
+Dear all, sorry that we did not make Task 3.1.3 of Exercise 3 very clear. In Task 3.1.3, we are asking to do K-means to reduce the size of the dataset. Subsequently, you can perform KNN for the classification task. The performance for comparison is related to the KNN.
+
+## 3.1.3 Perform K-means clustering on each cipher individually for the training data from all the
+available datasets ( disjunct ). Represent the training data as a number of cluster centroids and
+compare performance, try multiple cluster sizes.
+``` {r plot with different init clusters}
+whole_data_list <- list()
+for (k_initial_clusters in initial_clusters_numbers){
+  # reduce the dimensions of data using k-means
+  plot_data_ks_l <- get_cross_validation_kmeans_plot_data_lists(dataset=id, ks=ks, number_of_folds=number_of_people, k_initial_clusters = k_initial_clusters)
+  whole_data_list <- append(whole_data_list, plot_data_ks_l)
+}
+```
+```{r plot all the cluster sizes on one plot}
+# # whole_data_list
+# df_whole_plot_data <- data.frame(Reduce(rbind, whole_data_list))
+
+df_whole <- data.frame()
+df_tmp <- data.frame(Reduce(rbind, whole_data_list))
+# take all with k=3 and sum
+
+for (init_k in initial_clusters_numbers){
+  
+  for (k in ks){
+    df_k <- df_tmp[df_tmp$k==k,]
+    df_k <- df_k[df_k$title_info==init_k, ]
+    # sum the test_time_v and test_accuracy_v
+    time_v_sum <- rep(0, 10) # 10 repetitions
+    acc_v_sum <- rep(0, 10)
+    for (i in 1:nrow(df_k)){
+      time_v_sum <- time_v_sum + unlist(df_k$test_time_v[i])
+      acc_v_sum <- acc_v_sum + unlist(df_k$test_accuracy_v[i])
+    }
+    time_v_avg <- time_v_sum / nrow(df_k)
+    acc_v_avg <- acc_v_sum / nrow(df_k)
+    df_row_k <- data.frame(df_k$title_info[1], k, mean(time_v_avg), sd(time_v_avg), mean(acc_v_avg), sd(acc_v_avg))
+    names(df_row_k) <- c('title_info', 'k', 'mean_time', 'sd_time', 'mean_acc', 'sd_acc')
+    df_whole <-rbind(df_whole, df_row_k)
+  }
+  
+}
+```
+```{r plotting}
+# Try to plot everything on 1 plot
+main <- paste("Comparison of performance with varying initial clusters")
+
+
+df_50 <- df_whole[df_whole$title_info==50, ]
+df_75 <- df_whole[df_whole$title_info==75, ]
+df_100 <- df_whole[df_whole$title_info==100, ]
+df_125 <- df_whole[df_whole$title_info==125, ]
+df_150 <- df_whole[df_whole$title_info==150, ]
+
+
+g_time <- ggplot(df_50, aes(x=ks)) +
+  # geom_line(aes(y=mean_time)) +
+  # geom_ribbon(aes(ymax=mean_time+sd_time, ymin=mean_time-sd_time), fill="pink", alpha=.5) +
+  
+  geom_line(aes(y=df_50$mean_time, color="cluster init 50")) + 
+  geom_ribbon(aes(ymax=df_50$mean_time+df_50$sd_time, ymin=df_50$mean_time-df_50$sd_time), fill="green", alpha=.3)+
+  
+  geom_line(aes(y=df_75$mean_time, color="cluster init 75")) + 
+  geom_ribbon(aes(ymax=df_75$mean_time+df_75$sd_time, ymin=df_75$mean_time-df_75$sd_time), fill="red", alpha=.3)+
+  
+  geom_line(aes(y=df_100$mean_time, color="cluster init 100")) +
+  geom_ribbon(aes(ymax=df_100$mean_time+df_100$sd_time, ymin=df_100$mean_time-df_100$sd_time), fill="blue", alpha=.3)+
+
+  geom_line(aes(y=df_125$mean_time, color="cluster init 125")) +
+  geom_ribbon(aes(ymax=df_125$mean_time+df_125$sd_time, ymin=df_125$mean_time-df_125$sd_time), fill="purple", alpha=.3)+
+
+  geom_line(aes(y=df_150$mean_time, color="cluster init 150")) +
+  geom_ribbon(aes(ymax=df_150$mean_time+df_150$sd_time, ymin=df_150$mean_time-df_150$sd_time), fill="brown", alpha=.3)+
+  
+  scale_colour_manual("", 
+                      values = c("cluster init 50"="green", 
+                                 "cluster init 75"="red",
+                                 "cluster init 100"="blue",
+                                 "cluster init 125"="purple",
+                                 "cluster init 150"="brown" )) +
+labs(title=main, 
+       subtitle="accuracy of knn", 
+       caption="Source: abcd", 
+       y="time [ms]",
+       x="k-number of nearest neighbours")
+
+
+g_accuracy <- ggplot(df_50, aes(x=ks)) + 
+  geom_line(aes(y=df_50$mean_acc, color="cluster init 50")) + 
+  geom_ribbon(aes(ymax=df_50$mean_acc+df_50$sd_acc, ymin=df_50$mean_acc-df_50$sd_acc), fill="green", alpha=.3)+
+  
+  geom_line(aes(y=df_75$mean_acc, color="cluster init 75")) + 
+  geom_ribbon(aes(ymax=df_75$mean_acc+df_75$sd_acc, ymin=df_75$mean_acc-df_75$sd_acc), fill="red", alpha=.3)+
+  
+  geom_line(aes(y=df_100$mean_acc, color="cluster init 100")) +
+  geom_ribbon(aes(ymax=df_100$mean_acc+df_100$sd_acc, ymin=df_100$mean_acc-df_100$sd_acc), fill="blue", alpha=.3)+
+
+  geom_line(aes(y=df_125$mean_acc, color="cluster init 125")) +
+  geom_ribbon(aes(ymax=df_125$mean_acc+df_125$sd_acc, ymin=df_125$mean_acc-df_125$sd_acc), fill="purple", alpha=.3)+
+
+  geom_line(aes(y=df_150$mean_acc, color="cluster init 150")) +
+  geom_ribbon(aes(ymax=df_150$mean_acc+df_150$sd_acc, ymin=df_150$mean_acc-df_150$sd_acc), fill="brown", alpha=.3)+
+  
+  scale_colour_manual("", 
+                      values = c("cluster init 50"="green", 
+                                 "cluster init 75"="red",
+                                 "cluster init 100"="blue",
+                                 "cluster init 125"="purple",
+                                 "cluster init 150"="brown" )) +
+labs(title=main, 
+       subtitle="accuracy of knn", 
+       caption="Source: abcd", 
+       y="accuracy [%]",
+       x="k-number of nearest neighbours")
+list_of_plots <- list(g_time, g_accuracy)
+
+
+save_path <- "figures/3_1/comparison/"
+plot_indicator <- 0
+for (plot in list_of_plots){
+  plot_indicator <- plot_indicator + 1
+  print(plot)
+  ggsave(paste(save_path, "cv_kmeans_", plot_indicator, ".png"), plot = plot,
+         width = 15, height = 10, units = "cm")
+}
+```
+
+```{r all in finction}
+
+
+# ks <- c(3,5,10)
+# initial_clusters_numbers <- c(50, 75, 100, 125, 150)
+
+
+generate_plots_different_k_kmeans_whole_data_from_id <- function(data, ks = c(3,5,10), initial_clusters_numbers = c(50, 75, 100, 125, 150)){
+  
+  whole_data_list <- list()
+  for (k_initial_clusters in initial_clusters_numbers){
+    # reduce the dimensions of data using k-means
+    plot_data_ks_l <- get_cross_validation_kmeans_plot_data_lists(dataset=data, ks=ks, number_of_folds=number_of_people, k_initial_clusters = k_initial_clusters)
+    whole_data_list <- append(whole_data_list, plot_data_ks_l)
+  }
+  
+  
+  df_whole <- data.frame()
+  df_tmp <- data.frame(Reduce(rbind, whole_data_list))
+  # take all with k=3 and sum
+  
+  for (init_k in initial_clusters_numbers){
+    
+    for (k in ks){
+      df_k <- df_tmp[df_tmp$k==k,]
+      df_k <- df_k[df_k$title_info==init_k, ]
+      # sum the test_time_v and test_accuracy_v
+      time_v_sum <- rep(0, 10) # 10 repetitions
+      acc_v_sum <- rep(0, 10)
+      for (i in 1:nrow(df_k)){
+        time_v_sum <- time_v_sum + unlist(df_k$test_time_v[i])
+        acc_v_sum <- acc_v_sum + unlist(df_k$test_accuracy_v[i])
+      }
+      time_v_avg <- time_v_sum / nrow(df_k)
+      acc_v_avg <- acc_v_sum / nrow(df_k)
+      df_row_k <- data.frame(df_k$title_info[1], k, mean(time_v_avg), sd(time_v_avg), mean(acc_v_avg), sd(acc_v_avg))
+      names(df_row_k) <- c('title_info', 'k', 'mean_time', 'sd_time', 'mean_acc', 'sd_acc')
+      df_whole <-rbind(df_whole, df_row_k)
+    }
+    
+  }
+  
+  
+  # Try to plot everything on 1 plot
+  main <- paste("Comparison of performance with varying initial clusters")
+  
+  df_50 <- df_whole[df_whole$title_info==50, ]
+  df_75 <- df_whole[df_whole$title_info==75, ]
+  df_100 <- df_whole[df_whole$title_info==100, ]
+  df_125 <- df_whole[df_whole$title_info==125, ]
+  df_150 <- df_whole[df_whole$title_info==150, ]
+  
+  
+  g_time <- ggplot(df_50, aes(x=ks)) +
+    
+    geom_line(aes(y=df_50$mean_time, color="cluster init 50")) + 
+    geom_ribbon(aes(ymax=df_50$mean_time+df_50$sd_time, ymin=df_50$mean_time-df_50$sd_time), fill="green", alpha=.3)+
+    
+    geom_line(aes(y=df_75$mean_time, color="cluster init 75")) + 
+    geom_ribbon(aes(ymax=df_75$mean_time+df_75$sd_time, ymin=df_75$mean_time-df_75$sd_time), fill="red", alpha=.3)+
+    
+    geom_line(aes(y=df_100$mean_time, color="cluster init 100")) +
+    geom_ribbon(aes(ymax=df_100$mean_time+df_100$sd_time, ymin=df_100$mean_time-df_100$sd_time), fill="blue", alpha=.3)+
+  
+    geom_line(aes(y=df_125$mean_time, color="cluster init 125")) +
+    geom_ribbon(aes(ymax=df_125$mean_time+df_125$sd_time, ymin=df_125$mean_time-df_125$sd_time), fill="purple", alpha=.3)+
+  
+    geom_line(aes(y=df_150$mean_time, color="cluster init 150")) +
+    geom_ribbon(aes(ymax=df_150$mean_time+df_150$sd_time, ymin=df_150$mean_time-df_150$sd_time), fill="brown", alpha=.3)+
+    
+    scale_colour_manual("", 
+                        values = c("cluster init 50"="green", 
+                                   "cluster init 75"="red",
+                                   "cluster init 100"="blue",
+                                   "cluster init 125"="purple",
+                                   "cluster init 150"="brown" )) +
+  labs(title=main, 
+         subtitle="accuracy of knn", 
+         caption="Source: abcd", 
+         y="time [ms]",
+         x="k-number of nearest neighbours")
+  
+  
+  g_accuracy <- ggplot(df_50, aes(x=ks)) + 
+    geom_line(aes(y=df_50$mean_acc, color="cluster init 50")) + 
+    geom_ribbon(aes(ymax=df_50$mean_acc+df_50$sd_acc, ymin=df_50$mean_acc-df_50$sd_acc), fill="green", alpha=.3)+
+    
+    geom_line(aes(y=df_75$mean_acc, color="cluster init 75")) + 
+    geom_ribbon(aes(ymax=df_75$mean_acc+df_75$sd_acc, ymin=df_75$mean_acc-df_75$sd_acc), fill="red", alpha=.3)+
+    
+    geom_line(aes(y=df_100$mean_acc, color="cluster init 100")) +
+    geom_ribbon(aes(ymax=df_100$mean_acc+df_100$sd_acc, ymin=df_100$mean_acc-df_100$sd_acc), fill="blue", alpha=.3)+
+  
+    geom_line(aes(y=df_125$mean_acc, color="cluster init 125")) +
+    geom_ribbon(aes(ymax=df_125$mean_acc+df_125$sd_acc, ymin=df_125$mean_acc-df_125$sd_acc), fill="purple", alpha=.3)+
+  
+    geom_line(aes(y=df_150$mean_acc, color="cluster init 150")) +
+    geom_ribbon(aes(ymax=df_150$mean_acc+df_150$sd_acc, ymin=df_150$mean_acc-df_150$sd_acc), fill="brown", alpha=.3)+
+    
+    scale_colour_manual("", 
+                        values = c("cluster init 50"="green", 
+                                   "cluster init 75"="red",
+                                   "cluster init 100"="blue",
+                                   "cluster init 125"="purple",
+                                   "cluster init 150"="brown" )) +
+  labs(title=main, 
+         subtitle="accuracy of knn", 
+         caption="Source: abcd", 
+         y="accuracy [%]",
+         x="k-number of nearest neighbours")
+  list_of_plots <- list(g_time, g_accuracy)
+  
+  
+  save_path <- "figures/3_1/comparison/"
+  plot_indicator <- 0
+  for (plot in list_of_plots){
+    plot_indicator <- plot_indicator + 1
+    print(plot)
+    ggsave(paste(save_path, "cv_kmeans_", plot_indicator, ".png"), plot = plot,
+           width = 15, height = 10, units = "cm")
+  }
+  
+}
+
+# get the reduced df with all the ks and all cluster numbers from id
+get_whole_data_kmeans_cv <- function(data, ks = c(3,5,10), initial_clusters_numbers = c(50, 75, 100, 125, 150)){
+  whole_data_list <- list()
+  for (k_initial_clusters in initial_clusters_numbers){
+    # reduce the dimensions of data using k-means
+    plot_data_ks_l <- get_cross_validation_kmeans_plot_data_lists(dataset=data, ks=ks, number_of_folds=number_of_people, k_initial_clusters = k_initial_clusters)
+    whole_data_list <- append(whole_data_list, plot_data_ks_l)
+  }
+  
+  
+  df_whole <- data.frame()
+  df_tmp <- data.frame(Reduce(rbind, whole_data_list))
+  # take all with k=3 and sum
+  
+  for (init_k in initial_clusters_numbers){
+    
+    for (k in ks){
+      df_k <- df_tmp[df_tmp$k==k,]
+      df_k <- df_k[df_k$title_info==init_k, ]
+      # sum the test_time_v and test_accuracy_v
+      time_v_sum <- rep(0, 10) # 10 repetitions
+      acc_v_sum <- rep(0, 10)
+      for (i in 1:nrow(df_k)){
+        time_v_sum <- time_v_sum + unlist(df_k$test_time_v[i])
+        acc_v_sum <- acc_v_sum + unlist(df_k$test_accuracy_v[i])
+      }
+      time_v_avg <- time_v_sum / nrow(df_k)
+      acc_v_avg <- acc_v_sum / nrow(df_k)
+      df_row_k <- data.frame(df_k$title_info[1], k, mean(time_v_avg), sd(time_v_avg), mean(acc_v_avg), sd(acc_v_avg))
+      names(df_row_k) <- c('title_info', 'k', 'mean_time', 'sd_time', 'mean_acc', 'sd_acc')
+      df_whole <-rbind(df_whole, df_row_k)
+    }
+  }
+  return(df_whole)
+}
+
+
+# generate plots based on the df_whole with the correct column names!
+generate_plots_different_k_kmeans_whole_data <- function(df_whole, ks = c(3,5,10), initial_clusters_numbers = c(50, 75, 100, 125, 150)){
+  # column names! names(df_whole) <- c('title_info', 'k', 'mean_time', 'sd_time', 'mean_acc', 'sd_acc')
+  
+  # Try to plot everything on 1 plot
+  main <- paste("Comparison of performance with varying initial clusters")
+  
+  df_50 <- df_whole[df_whole$title_info==50, ]
+  df_75 <- df_whole[df_whole$title_info==75, ]
+  df_100 <- df_whole[df_whole$title_info==100, ]
+  df_125 <- df_whole[df_whole$title_info==125, ]
+  df_150 <- df_whole[df_whole$title_info==150, ]
+  
+  
+  g_time <- ggplot(df_50, aes(x=ks)) +
+    
+    geom_line(aes(y=df_50$mean_time, color="cluster init 50")) + 
+    geom_ribbon(aes(ymax=df_50$mean_time+df_50$sd_time, ymin=df_50$mean_time-df_50$sd_time), fill="green", alpha=.3)+
+    
+    geom_line(aes(y=df_75$mean_time, color="cluster init 75")) + 
+    geom_ribbon(aes(ymax=df_75$mean_time+df_75$sd_time, ymin=df_75$mean_time-df_75$sd_time), fill="red", alpha=.3)+
+    
+    geom_line(aes(y=df_100$mean_time, color="cluster init 100")) +
+    geom_ribbon(aes(ymax=df_100$mean_time+df_100$sd_time, ymin=df_100$mean_time-df_100$sd_time), fill="blue", alpha=.3)+
+  
+    geom_line(aes(y=df_125$mean_time, color="cluster init 125")) +
+    geom_ribbon(aes(ymax=df_125$mean_time+df_125$sd_time, ymin=df_125$mean_time-df_125$sd_time), fill="purple", alpha=.3)+
+  
+    geom_line(aes(y=df_150$mean_time, color="cluster init 150")) +
+    geom_ribbon(aes(ymax=df_150$mean_time+df_150$sd_time, ymin=df_150$mean_time-df_150$sd_time), fill="brown", alpha=.3)+
+    
+    scale_colour_manual("", 
+                        values = c("cluster init 50"="green", 
+                                   "cluster init 75"="red",
+                                   "cluster init 100"="blue",
+                                   "cluster init 125"="purple",
+                                   "cluster init 150"="brown" )) +
+  labs(title=main, 
+         subtitle="accuracy of knn", 
+         caption="Source: abcd", 
+         y="time [ms]",
+         x="k-number of nearest neighbours")
+  
+  
+  g_accuracy <- ggplot(df_50, aes(x=ks)) + 
+    geom_line(aes(y=df_50$mean_acc, color="cluster init 50")) + 
+    geom_ribbon(aes(ymax=df_50$mean_acc+df_50$sd_acc, ymin=df_50$mean_acc-df_50$sd_acc), fill="green", alpha=.3)+
+    
+    geom_line(aes(y=df_75$mean_acc, color="cluster init 75")) + 
+    geom_ribbon(aes(ymax=df_75$mean_acc+df_75$sd_acc, ymin=df_75$mean_acc-df_75$sd_acc), fill="red", alpha=.3)+
+    
+    geom_line(aes(y=df_100$mean_acc, color="cluster init 100")) +
+    geom_ribbon(aes(ymax=df_100$mean_acc+df_100$sd_acc, ymin=df_100$mean_acc-df_100$sd_acc), fill="blue", alpha=.3)+
+  
+    geom_line(aes(y=df_125$mean_acc, color="cluster init 125")) +
+    geom_ribbon(aes(ymax=df_125$mean_acc+df_125$sd_acc, ymin=df_125$mean_acc-df_125$sd_acc), fill="purple", alpha=.3)+
+  
+    geom_line(aes(y=df_150$mean_acc, color="cluster init 150")) +
+    geom_ribbon(aes(ymax=df_150$mean_acc+df_150$sd_acc, ymin=df_150$mean_acc-df_150$sd_acc), fill="brown", alpha=.3)+
+    
+    scale_colour_manual("", 
+                        values = c("cluster init 50"="green", 
+                                   "cluster init 75"="red",
+                                   "cluster init 100"="blue",
+                                   "cluster init 125"="purple",
+                                   "cluster init 150"="brown" )) +
+  labs(title=main, 
+         subtitle="accuracy of knn", 
+         caption="Source: abcd", 
+         y="accuracy [%]",
+         x="k-number of nearest neighbours")
+  list_of_plots <- list(g_time, g_accuracy)
+  return(list_of_plots)
+}
+
+df_whole <- get_whole_data_kmeans_cv(data=id)
+list_of_plots <- generate_plots_different_k_kmeans_whole_data(df_whole=df_whole)
+
+save_path <- "figures/3_1/comparison/"
+plot_indicator <- 0
+for (plot in list_of_plots){
+  plot_indicator <- plot_indicator + 1
+  print(plot)
+  ggsave(paste(save_path, "cv_kmeans_", plot_indicator, ".png"), plot = plot,
+         width = 15, height = 10, units = "cm")
+}
+
+```
+do kmeans_classification of each row
+   then calculate mean values of every cluster center from all the ciphers
+   store it as a cluster representing the given cipher
+ so with the test data we just take the row, do kmeans so it matches the dimensions of kmeans cluster
+   use it as the test data for knn
+
+```{r get the cipher rows data}
+# down sample the data using k_means clustering
+get_k_means_clustered_data_of_cipher <- function(dataset, cipher, k_init_clusters){
+  cipher_cluster <- c()
+  digit_data <- dataset[ dataset[, 1] == cipher, ]
+  clusterData <- kmeans(digit_data, centers=k_initial_clusters)
+  cipher_cluster[[cipher + 1]] <- clusterData$centers
+
+  reduced_data <- do.call(rbind, cipher_cluster)
+  return(reduced_data)
+}
+
+# get dataframe with 1 row per digit with kmeans reduced columns
+get_single_cipher_row_reduced_dataset_kmeans <- function(dataset, k_init_clusters_now){
+  data_single_ciphers_kmeans <- data.frame()
+
+  for (cipher in ciphers){
+    # do kmeans_classification of each row
+    # then calculate mean values of every cluster center from all the ciphers
+    # store it as a cluster representing the given cipher
+    data_kmeans_cipher <- get_k_means_clustered_data_of_cipher(dataset = id, cipher = cipher, k_init_clusters = k_init_clusters_now)
+    data_mean_cipher <- rowMeans(data_kmeans_cipher)
+    data_mean_cipher <- data.frame(t(data_mean_cipher))
+    names(data_mean_cipher) <- names(data_kmeans_cipher)
+    data_mean_cipher$label <- cipher
+    
+    # get the labels as the first column
+    data_mean_cipher <- data_mean_cipher[,c(ncol(data_mean_cipher),1:(ncol(data_mean_cipher)-1))]
+    
+    # append the main dataframe with the mean of this cipher
+    data_single_ciphers_kmeans <- rbind(data_single_ciphers_kmeans, data_mean_cipher)
+    
+    
+    # so with the test data we just take the row, do kmeans so it matches the dimensions of kmeans cluster
+    # use it as the test data for knn
+  }
+  names(data_single_ciphers_kmeans) <- names(data_mean_cipher)
+  return(data_single_ciphers_kmeans)
+}
+
+
+# data <- id
+k_init_clusters <- 100
+df_single_reduced <- get_single_cipher_row_reduced_dataset_kmeans(dataset=id, k_init_clusters_now = k_init_clusters)
+
+```
+
+
+```{r get the cipher rows data Erik}
+# for cipher in ciphers:
+#   take all rows of the cipher
+#   save them as 1 row of cluster centroids
+# having this dataframe do the above code
+
+#creating helping vector and ranges for filtering dataset
+library(data.table)
+values <- data.table(value = c(1:4000))
+range <-  data.table(start = c(1, 401, 801, 1201, 1601, 2001, 2401, 2801, 3201, 3601), end = c(5, 405, 805, 1205, 1605, 2005, 2405, 2805, 3205, 3605))
+values[range, on = .(value >= start, value <= end), .(results = x.value)]
+
+
+results <- data.table(NULL)
+
+for (i in 1:NROW(range)){ 
+  results <- rbind(results, 
+                   data.table(result = values[value >= range[i, start] & 
+                                                value <= range[i, end], value]))}
+
+#creating new dataset with 5 instances for each number
+for (i in results){
+  new_ds <- id[i,(1:ncol(id))]
+}
+
+
+```
+## Apparently it wasnt proper 3.1.3 exercise
+Perform K-means clustering on each cipher individually for the training data from all
+the available datasets ( disjunct ). Represent the training data as a number of
+cluster centroids and compare performance, try multiple cluster sizes.
+
+### pseudocode
+for cipher in ciphers:
+  take all rows of the cipher
+  save them as 1 row of cluster centroids
+having this dataframe do the above code

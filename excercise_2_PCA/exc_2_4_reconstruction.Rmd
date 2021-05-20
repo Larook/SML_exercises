@@ -59,6 +59,7 @@ show_pca_eigenvectors <- function(dataset, searched_accum_var){
   }
 }
 ```
+
 ``` {r }
 load("../data/idList-cornered-100-2021.Rdata") 
 id <- do.call(rbind, idList[1:6])
@@ -76,12 +77,57 @@ for (searched_accum_var in accumulated_variance_v){
   show_pca_eigenvectors(shuffled_df, searched_accum_var)
 }
 ```
+
 ## 2.4.5. 
 The last exercise is to compare the outcomes between two different ciphers. For instance, two
 different ciphers, (e.g. row 43 and row 456 represent a ’0’ and a ’1’), compare the 10 first scores
 and see if you can spot a difference. Try also to calculate the mean for all 400 instances of these
 ciphers and compare the first 10 scores. Can you spot a pattern when comparing with the
 loadings
+
+
+``` {r 10 eigenvectos}
+
+
+show_pca_reconstruction_10_scores <- function(dataset, cipher_index){
+  
+  wanted_pcs <- prcomp(dataset[,(2:ncol(dataset))], center = TRUE,scale. = TRUE, rank. = 10)
+  print(wanted_pcs)
+  print(paste0("function returns data with dimensions", dim(wanted_pcs)))
+
+  restr <- get_reconstructed_pca(wanted_pcs)
+  image(get_img_rot(restr, cipher_index), col = gray(0:100/100) )
+  
+}
+
+
+# compare the 10 first scores and see if you can spot a difference 
+show_pca_eigenvectors_cipher <- function(dataset, cipher_number){
+  # dataset <- dataset[cipher_number, ]
+  wanted_pcs <- prcomp(dataset[,(2:ncol(dataset))], center = TRUE,scale. = TRUE)
+  imageSize <- 18
+  # Plot the first 10 eigenvectors and plot as images
+  eigenVector <- 1:10
+  for (e in eigenVector) {
+    imageNewM <- matrix(wanted_pcs$rotation[,e],nrow = imageSize,ncol = imageSize,byrow = FALSE)
+    print(image(imageNewM))
+  }
+}
+
+load("../data/idList-cornered-100-2021.Rdata") 
+id <- do.call(rbind, idList[1:6])
+id <- as.data.frame(id)
+id$V1 <- factor(id$V1)
+
+shuffled_df <- id#[sample(nrow(id)),]
+
+
+show_ciphers <- c(43, 456)
+for (cipher in show_ciphers){
+  show_pca_reconstruction_10_scores(id, cipher)
+}
+```
+
 ``` {r }
 library("stats")
 # library(princomp)
