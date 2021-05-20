@@ -1,0 +1,234 @@
+---
+title: "Exercise_5_SVM"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("kernlab")
+library(readr)
+library(caret)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+
+
+library(kernlab)
+library(readr)
+library(caret)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(plotly)
+
+```
+
+## 5.1.1 train_dataa SVM classifier on the data, and evaluate the performance of the classifier. For example, you can do a disjunct study: half data as the training data and the other half as the test data.
+
+
+```{r github}
+# https://github.com/kmaheshkulkarni/Use-image-classification-to-identify-handwritten-digits-using-Support-Vector-Machine-Algorithm/blob/master/DDA1710214_.R
+
+#==================================Loading Libraries==========================================#
+library(kernlab)
+library(readr)
+library(caret)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(plotly)
+
+
+source("important_functions/load_data_id.R")
+source("important_functions/get_training_test_data.R")
+
+source("important_functions/get_normalized_data.R")
+source("important_functions/get_gaussian_smoothed_data.R")
+source("important_functions/view_data.R")
+
+source("important_functions/get_k_clustered_cipher_data.R") 
+source("important_functions/get_PCA_reduced_data.R") 
+
+
+# load dataset all_in
+id <- load_data_id(load_full=FALSE)
+
+# preprocessing options
+# id_smooth <- get_gaussian_smoothed_data(dataset=id, smooth_sigma=0.05)
+id_norm <- get_normalized_data(id)
+
+# which of the preprocessing to use
+# id_use <- id_smooth
+id_use <- id_norm
+# id_use <- id
+
+# split to train and test dataset
+data_train_test_allin <- get_training_test_data_allin(data=id_use, training_percent=70)
+train_data_allin <- data_train_test_allin[[1]]
+test_data_allin <- data_train_test_allin[[2]]
+
+
+# splitting data disjunct
+data_train_test_disjunct <- get_training_test_data_disjunct(data=id_use)
+train_data_disjunct <- data_train_test_disjunct[[1]]
+test_data_disjunct <- data_train_test_disjunct[[2]]
+
+
+# decide if doing the all_in or disjunct
+# id_train <-train_data_allin
+# id_test <- test_data_allin
+
+# id_train <-train_data_disjunct
+# id_test <- test_data_disjunct
+
+train_data <- train_data_allin
+test_data <- test_data_allin
+
+# ...................... TRY DIFFERENT C VALUES just to play with ................................................
+
+#classifier_rbf <-ksvm(V1~ ., data = train, kernel = "vanilladot", C = 1)
+#classifier_rbf <-ksvm(V1~., data = train, kernel = "rbfdot", kpar=list(sigma=0.05), C = 1)
+classifier_rbf <-ksvm(V1~ ., data = train_data, kernel = "polydot", C = 0.5)
+datasetTest <- predict(classifier_rbf,test)
+confusionMatrix(datasetTest, test$V1)
+
+```
+
+```{r Model_linear}
+#===========================Model Training for Data=========================================#
+#==================================Model_linear=============================================#
+Model_linear <- ksvm(V1~ ., data = train_data, scale = FALSE, kernel = "vanilladot")
+Eval_linear<- predict(Model_linear, test_data)
+test_confusion <- confusionMatrix(Eval_linear, test_data$V1)
+paste("confusionMatrix(datasetTest,test$V1) = ", test_confusion$overall[1])
+# Accuracy    :  0.972
+
+#______________We use train_datafunction from caret package to perform crossvalidation______________#
+trainControl <- trainControl(method="cv", number=5)
+metric <- "Accuracy"
+set.seed(100)
+Model_linear
+
+# making a grid of C values.
+# grid <- expand.grid(C=seq(0.01, 0.5, by=1))
+grid <- expand.grid(C=c(0.01, 0.1, 0.2, 0.3, 0.4))
+# grid <- expand.grid(C=c(1, 10, 100, 500, 1000))
+# Performing 5-fold cross validation
+fit.svm <- train(V1~ ., data=train_data, method="svmLinear", metric=metric,
+                 tuneGrid=grid, trControl=trainControl)
+
+# Printing cross validation result
+print(fit.svm)
+# Best tune at C = 0.1,
+# Accuracy = 0.9725012
+
+# Plotting "fit.svm" results
+plot(fit.svm, ylim = c(0.97, 0.975))
+# plot(fit.svm)
+```
+```{r linear2}
+#**************# Valdiating the model after cross validation on test data*********************#
+
+timing_linear_v <- c()
+for (i in 1:10) {
+  t_start <- as.numeric(proc.time())
+  evaluate_linear_test<- predict(fit.svm, test_data)
+  timing_linear_v <- c(timing_linear_v, as.numeric(proc.time()) - t_start)
+}
+paste("mean of timing_linear_v = ", mean(timing_linear_v))
+
+plot_ly(x = ~evaluate_linear_test, type = "histogram")
+# plot_ly(x = ~evaluate_linear_test, type = "box")
+confusionMatrix(evaluate_linear_test, test_data$V1)
+
+```
+
+
+```{r rbf}
+#==================================Model_RBF================================================#
+Model_RBF <- ksvm(V1~ ., data = train_data, kernel = "rbfdot")
+Eval_RBF<- predict(Model_RBF, test_data)
+confusionMatrix(Eval_RBF,test_data$V1)
+
+#Accuracy : 0.9845 
+
+trainControl_rbf <- trainControl(method="cv", number=5)
+metric <- "Accuracy"
+set.seed(100)
+Model_RBF
+
+#cost C = 1
+#Hyperparameter : Gaussian Radial Basis kernel function. Hyperparameter : sigma =  0.00259482657617805 
+#Training error : 0.0035 
+
+# Making grid of "sigma" and C values.
+grid_rbf <- expand.grid(.sigma=c(0.025, 0.05), .C=c(0.1,0.5,1,2) )
+
+# Performing 5-fold cross validation
+fit.svm_rbf <- train(V1~ ., data=train_data, method="svmRadial", metric=metric,
+                        tuneGrid=grid_rbf, trControl=trainControl_rbf)
+
+# Printing cross validation result
+print(fit.svm_rbf)
+# Best tune at sigma = 0.025 & C=2, Accuracy 0.8737606
+
+# Plotting model results
+plot(fit.svm_rbf)
+
+```
+
+``` {r rbf checking_overfitting}
+#================================================================================================
+# Checking overfitting - Non-Linear - SVM
+#================================================================================================
+
+# Validating the model results on test data
+
+timing_rbf_v <- c()
+for (i in 1:10) {
+  paste("i = ", i)
+  t_start <- as.numeric(proc.time())
+  evaluate_rbf<- predict(fit.svm_rbf, test_data)
+  timing_rbf_v <- c(timing_rbf_v, as.numeric(proc.time()) - t_start)
+}
+paste("mean of timing_rbf_v = ", mean(timing_rbf_v))
+
+evaluate_rbf<- predict(fit.svm_rbf, test_data)
+plot_ly(x = ~evaluate_rbf, type = "histogram")
+# plot_ly(x = ~evaluate_rbf, type = "box")
+
+confusionMatrix(evaluate_rbf, test_data$V1)
+# Accuracy : 0.8628     
+
+```
+
+########################################Result#####################################################
+#So we have tested Linear as well as Polynomial model and according to the test results we can 
+#clearly see that Linear Model is best fitted for classifying handwritten digits
+
+```{r compare both methods}
+# print(fit.svm)
+# Best tune at C = 0.1,
+# Accuracy = 0.9725012
+
+
+# print(fit.svm_rbf)
+# Best tune at sigma = 0.025 & C=2, Accuracy 0.8737606
+par(mfrow=c(1,2)) 
+barplot(c(0.9725012, 0.8737606),
+main = "accuraccy on the test data",
+xlab = "linear SVM            |            RBF SVM",
+# ylab = "",
+col = "darkgreen",
+horiz = FALSE,
+ylim=c(0, 1.1))
+mtext("linear [C = 0.1]            |            rbf [sigma = 0.025 & C=2]",side=3,line=-22.5,outer=TRUE)
+
+barplot(c(mean(timing_linear_v), mean(timing_rbf_v)),
+main = "prediction time",
+xlab = "linear SVM            |            RBF SVM",
+ylab = "time [ms]",
+col = "blue",
+horiz = FALSE)
+
+```

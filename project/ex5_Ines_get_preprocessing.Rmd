@@ -1,0 +1,431 @@
+---
+title: "testing of the R functions"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(gmodels)
+library(class)
+library(caret)
+library(swirl)
+library(ggplot2)
+library(spatstat)
+```
+
+
+```{r test}
+
+source("important_functions/load_data_id.R")
+source("important_functions/get_training_test_data.R")
+
+source("important_functions/get_normalized_data.R")
+source("important_functions/get_gaussian_smoothed_data.R")
+source("important_functions/view_data.R")
+
+source("important_functions/get_k_clustered_cipher_data.R") 
+source("important_functions/get_PCA_reduced_data.R") 
+# 
+# 
+# #loading data
+# id <- load_data_id(load_full=FALSE)
+# get_cipher_image(data=id, row_id=640)
+# 
+# # normalizing
+# id_norm <- get_normalized_data(id)
+# get_cipher_image(data=id_norm, row_id=640)
+# 
+# # gaussian smoothing
+# id_smooth <- get_gaussian_smoothed_data(dataset=id, smooth_sigma=0.05)
+# get_cipher_image(data=id_smooth, row_id=640)
+# 
+# 
+# # splitting data disjunct
+# data_train_test_disjunct <- get_training_test_data_disjunct(data=id_norm)
+# train_data_disjunct <- data_train_test_disjunct[[1]]
+# test_data_disjunct <- data_train_test_disjunct[[2]]
+# 
+# # PCA
+# pca_obj <- get_pca_obj(train_data_disjunct)
+# id_pca <- get_PCA_reduced_data(labels=train_data_disjunct$V1, pca_obj=pca_obj, searched_accum_var=80)
+# show_pca_reconstruction(pca_obj, cipher=70)
+# 
+# # splitting data all persons in
+# data_train_test_allin <- get_training_test_data_allin(data=id_norm, training_percent=70)
+# train_data_allin <- data_train_test_allin[[1]]
+# test_data_allin <- data_train_test_allin[[2]]
+# 
+# # view random row
+# get_cipher_image(data=train_data_allin, row_id=2)
+# 
+# # try k-means
+# train_data_allin_kmeans <- get_k_clustered_cipher_data(data=train_data_allin_kmeans, n_cluster=1)
+# get_cipher_image(data=train_data_allin_kmeans, row_id=1)
+
+```
+
+```{r load libraries and dataset}
+
+library(gmodels)
+library(class)
+library(caret)
+library(swirl)
+library(ggplot2)
+library(spatstat)
+
+
+library(rpart)
+library(rpart.plot)
+library(stats)
+library(randomForest)
+library(caret)
+library(kernlab)
+library(RSNNS)
+library(neuralnet)
+
+
+source("important_functions/load_data_id.R")
+source("important_functions/get_training_test_data.R")
+
+source("important_functions/get_normalized_data.R")
+source("important_functions/get_gaussian_smoothed_data.R")
+source("important_functions/view_data.R")
+
+source("important_functions/get_k_clustered_cipher_data.R") 
+source("important_functions/get_PCA_reduced_data.R") 
+
+################################
+# This version: 
+# - plots and computes computational code 
+# - changed to 3 hidden layers with 120 nodes like Zhuoqi and (150,100,50) for PCA part
+
+# TODO: add pre-processing from Karol's 
+# TODO: Cross-validation 
+# TODO: mean and variance
+# TODO: a function for computing + plotting run-time maybe instead of copying same code everywhere
+
+# current issue: takes too long to run
+################################
+
+# load dataset all_in
+id <- load_data_id(load_full=FALSE)
+
+# preprocessing options
+id_smooth <- get_gaussian_smoothed_data(dataset=id, smooth_sigma=0.05)
+# id_norm <- get_normalized_data(id)
+
+# which of the preprocessing to use
+id_use <- id_smooth
+# id_use <- id_norm
+# id_use <- id
+
+# split to train and test dataset
+data_train_test_allin <- get_training_test_data_allin(data=id_use, training_percent=70)
+train_data_allin <- data_train_test_allin[[1]]
+test_data_allin <- data_train_test_allin[[2]]
+
+
+# splitting data disjunct
+data_train_test_disjunct <- get_training_test_data_disjunct(data=id_use)
+train_data_disjunct <- data_train_test_disjunct[[1]]
+test_data_disjunct <- data_train_test_disjunct[[2]]
+
+
+# decide if doing the all_in or disjunct
+# id_train <-train_data_allin
+# id_test <- test_data_allin
+
+id_train <-train_data_disjunct
+id_test <- test_data_disjunct
+
+
+```
+
+```{r }
+####################################
+####### 5.2: Neural Networks ####### 
+####################################
+
+#######################################################################################################
+## 5.2.1
+## Create a matrix (as below in grey background) for the training classes. It has N rows (the same as 
+## the number of training data) and 10 columns (binary). The column with '1' marks the 
+## corresponding class as the example shown below (eg. cyper '0' is represented by '1000000000').
+#######################################################################################################
+
+lev <- levels(id_train$V1) # Number of classes
+
+# Create a list probabilities, for all labels
+nnTrainingClass <- matrix(nrow = length(id_train$V1), ncol = 10, data = 0) 
+
+for(i in 1:length(id_train$V1)) { # Set probabilities to one for matching class
+  matchList <- match(lev,toString(id_train$V1[i]))
+  matchList[is.na(matchList)] <- 0
+  nnTrainingClass[i,] <- matchList
+}
+trainingClass <- as.data.frame(nnTrainingClass)
+
+```
+
+```{r }
+############################################################################################
+## 5.2.2
+## Train a neural network with N inputs and 10 outputs, based on the modified training data.
+############################################################################################
+
+train_mlp <- function(training_data, training_classes, size) {
+  
+  #network <- mlp(id[,-1], trainingClass, size = c(2,2,2), maxit = 2, hiddenActFunc = "Act_TanH", learnFunc="Std_Backpropagation", learnFuncParams = c(0.01,0))
+  
+  network <- mlp(training_data[,-1], training_classes, size = size, maxit = 300, hiddenActFunc = "Act_TanH", learnFunc="Std_Backpropagation", learnFuncParams = c(0.01,0))
+  
+  plotIterativeError(network)
+  
+  network$IterativeFitError[300]
+  
+  return(network)
+}
+
+# network <- train_mlp(id_train, trainingClass, c(5, 5))
+network <- train_mlp(id_train, trainingClass, 3)
+```
+
+```{r }
+############################################################################################
+## 5.2.3
+## Evaluate the neural network with the test data.
+############################################################################################
+evaluate_nn <- function(network, test_data) { 
+  # check if this is working!
+  
+  predictions <- predict(network, test_data[,-1])
+  
+  #You can use the following code to convert the mlp output into class labels (0 - 9)
+  responselist <- matrix(nrow = length(predictions[,1]), ncol = 1, data = "Na")
+  for(i in 1:nrow(predictions)) {
+    responselist[i,] <- toString( which(predictions[i,]==max(predictions[i,])) - 1 )
+    
+  }
+  responselist <- data.frame(responselist)
+  responselist[,1] <- as.factor(responselist[,1])
+  
+  # Calculating the accuracy
+  cf <- confusionMatrix(responselist[,1], test_data[,1])
+  return( sum(diag(cf))/sum(cf) )
+  
+}
+
+
+evaluate_nn(network, id_test)
+```
+
+```{r }
+######################## One hidden layer #########################################################
+####################################################################################################
+accuracyTestList <- c()
+accuracyTrainingList <- c()
+runtimeList <- c()
+
+# neurons <- c(38,40,42)
+neurons <- c(2,3,4)
+
+for (i in 1:length(neurons)) {
+  start_time <- Sys.time()
+  neurons_now <- neurons[i]
+  
+  network <- train_mlp(id_train, trainingClass, neurons_now)
+  # network <- train_mlp(id_train, trainingClass, c(5, 5))
+  
+  end_time <- Sys.time()
+  runtimeList[i] <- difftime(Sys.time(), start_time, units = "secs")
+  
+  accuracyTestList[i] <- evaluate_nn(network, id_test)
+  accuracyTrainingList[i] <- evaluate_nn(network, id_train)
+}
+```
+
+```{r }
+plot(neurons, unlist(accuracyTrainingList), type="b", col=1, lwd=1, pch=15, xlab="Number of Neurons in Hidden Layer", ylab="Accuracy")
+plot_labels <- c("Training Data")
+
+lines(neurons, unlist(accuracyTestList), type="b", col=2, lwd=1, pch=16)
+plot_labels[2] <- paste("Test Data")
+
+
+title("Evaluation of an ANN with One Hidden Layer")
+legend("bottomright",plot_labels, lwd=c(1), col=c(1,2), pch=c(15,16), y.intersp=1)
+
+plot(neurons, unlist(runtimeList), type="b", col=1, lwd=1, pch=15, xlab="Number of Neurons in Hidden Layer", ylab="Runtime (s)")
+title("NN Training Runtime -- one hidden layer")
+```
+##TODO: run that 10 times to have cross validation - means and variances of performances etc
+https://www.r-bloggers.com/2015/09/fitting-a-neural-network-in-r-neuralnet-package/
+
+    Do the train-test split
+    Fit the model to the train set
+    Test the model on the test set
+    Calculate the prediction error
+    Repeat the process K times
+
+```{r cross validation of one model of the network}
+# Now the net. Note that I am splitting the data in this way: 90% train set and 10% test set in a random way for 10 times. I am also initializing a progress bar using the plyr
+#library because I want to keep an eye on the status of the process since the fitting of the neural network may take a while.
+
+data <- id_use
+
+set.seed(450)
+cv.error <- NULL
+k <- 10
+library(plyr) 
+pbar <- create_progress_bar('text')
+pbar$init(k)
+for(i in 1:k){
+    index <- sample(1:nrow(data), round(0.9*nrow(data)))
+    train.cv <- data[index,]
+    test.cv <- data[-index,]
+    
+    nn <- train_mlp(train.cv, trainingClass, 5)
+    
+    # nn <- neuralnet(f,data=train.cv,hidden=c(5,2),linear.output=T)
+    # 
+    # pr.nn <- compute(nn,test.cv[,1:13])
+    # pr.nn <- pr.nn$net.result*(max(data$medv)-min(data$medv))+min(data$medv)
+    # 
+    # test.cv.r <- (test.cv$medv)*(max(data$medv)-min(data$medv))+min(data$medv)
+    # 
+    # cv.error[i] <- sum((test.cv.r - pr.nn)^2)/nrow(test.cv)
+    # 
+    # nn <- network()
+    
+    pbar$step()
+}
+
+
+
+```
+
+
+```{r }
+######################## Two hidden layers #########################################################
+####################################################################################################
+accuracyTestList <- c()
+accuracyTrainingList <- c()
+runtimeList <- c()
+
+#neurons <- c(2,4,6,8,10,12,14,16,18,20, 22, 24, 26, 28, 30)
+
+neurons <- c(38,40,42,44,46,48,50,52)
+
+for (i in seq(38,52, by = 2)) {  
+  start_time <- Sys.time()
+  
+  size <- (i + 1)
+  network <- train_mlp(id_train, trainingClass, c(150,size))
+  
+  end_time <- Sys.time()
+  runtimeList[[i+1]] <- difftime(Sys.time(), start_time, units = "secs")
+  
+  accuracyTestList[[i+1]] <- evaluate_nn(network, id_test)
+  accuracyTrainingList[[i+1]] <- evaluate_nn(network, id_train)
+}
+
+plot(neurons, unlist(accuracyTrainingList), type="b", col=2, lwd=0.8, pch=16, xlab="Number of Neurons in Second Hidden Layer", ylab="Accuracy")
+plot_labels <- c("Training Data")
+
+# For some reason R doesn't show this second line
+lines(neurons, unlist(accuracyTestList), type="b", col=1, lwd=0.8, pch=15)
+plot_labels[2] <- paste("Test Data")
+
+title("Evaluation of an ANN with Two Hidden Layers")
+legend("bottomright",plot_labels, lwd=c(1), col=c(1,2), pch=c(16,15), y.intersp=1)
+
+plot(neurons, unlist(runtimeList), type="b", col=1, lwd=1, pch=15, xlab="Number of Neurons in Second Hidden Layer", ylab="Runtime (s)")
+title("NN Training Runtime -- two hidden layers")
+
+```
+
+```{r }
+######################## Three hidden layers #########################################################
+####################################################################################################
+accuracyTestList <- c()
+accuracyTrainingList <- c()
+runtimeList <- c()
+
+#neurons <- c(2,4,6,8,10,12,14,16,18,20, 22, 24, 26, 28, 30)
+
+neurons <- c(38,40,42,44,46,48,50,52)
+
+for (i in seq(38,52, by = 2)) {
+  
+  start_time <- Sys.time()
+  
+  size <- (i + 1)
+  network <- train_mlp(id_train, trainingClass, c(150, 100,size)) #(150,100,50),
+  
+  end_time <- Sys.time()
+  runtimeList[[i+1]] <- difftime(Sys.time(), start_time, units = "secs")
+  
+  accuracyTestList[[i+1]] <- evaluate_nn(network, id_test)
+  accuracyTrainingList[[i+1]] <- evaluate_nn(network, id_train)
+}
+
+plot(neurons, unlist(accuracyTrainingList), type="b", col=2, lwd=0.8, pch=16, xlab="Number of Neurons in Third Hidden Layer", ylab="Accuracy")
+plot_labels <- c("Training Data")
+
+# For some reason R doesn't show this second line
+lines(neurons, unlist(accuracyTestList), type="b", col=1, lwd=0.8, pch=15)
+plot_labels[2] <- paste("Test Data")
+
+title("Evaluation of an ANN with Three Hidden Layers")
+legend("bottomright",plot_labels, lwd=c(1), col=c(1,2), pch=c(16,15), y.intersp=1)
+
+plot(neurons, unlist(runtimeList), type="b", col=1, lwd=1, pch=15, xlab="Number of Neurons in Second Hidden Layer", ylab="Runtime (s)")
+title("NN Training Runtime -- three hidden layers")
+```
+
+```{r }
+############################################################################################
+## 5.2.4
+## Training of NN with pre-processed data
+############################################################################################
+
+performPCA <- function(dataset, pcaCount){
+  pca <- prcomp(dataset,scale=FALSE, rank. = pcaCount) # rank = a number specifying the maximal rank, i.e., maximal number of principal components to be used. 
+  return (pca)
+}
+
+pca.10 <- performPCA(id[,-1], 10)
+
+accuracyTestList.pca <- c()
+accuracyTrainingList.pca <- c()
+runtimeList.pca <- c()
+
+neurons <- c(38,40,42,44,46,48,50,52)
+
+for (i in seq(38,52, by = 2)) {
+  
+  start_time <- Sys.time()
+  size <- (i + 1)
+  network <- train_mlp(pca.10$x, trainingClass, c(150,100,size)) #c(150,100,50) <- From Zhuoqi
+  end_time <- Sys.time()
+  
+  runtimeList.pca[[i+1]] <- difftime(Sys.time(), start_time, units = "secs")
+  
+  accuracyTestList.pca[[i+1]] <- evaluate_nn(network, id_test)
+  accuracyTrainingList.pca[[i+1]] <- evaluate_nn(network, id_train)
+}
+
+plot(neurons, unlist(accuracyTrainingList.pca), type="b", col=1, lwd=1, pch=15, xlab="Number of Neurons in Hidden Layer", ylab="Accuracy")
+plot_labels <- c("Training Data")
+
+lines(neurons, unlist(accuracyTestList.pca), type="b", col=2, lwd=1, pch=16)
+plot_labels[2] <- paste("Test Data")
+
+
+title("Evaluation of an ANN w/ PCA Preprocessing and One Hidden Layer")
+legend("bottomright",plot_labels, lwd=c(1), col=c(1,2), pch=c(15,16), y.intersp=1)
+
+
+plot(neurons, unlist(runtimeList), type="b", col=1, lwd=1, pch=15, xlab="Number of Neurons in Second Hidden Layer", ylab="Runtime (s)")
+title("NN w/ PCA Preprocessing Training Runtime -- two hidden layers")
+
+```
