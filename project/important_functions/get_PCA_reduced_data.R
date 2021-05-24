@@ -1,3 +1,5 @@
+
+
 get_pca_obj <- function(data){
   # returns the object of pca - made with max size of the pcs
   data_pca <- prcomp(data[,(2:ncol(data))], center = TRUE, scale. = TRUE)
@@ -27,6 +29,8 @@ show_pca_reconstruction <- function(pca_obj, cipher){
 
 get_PCA_reduced_data <- function(labels, pca_obj, searched_accum_var){
   # how to get the components that give us the % of variance? Proportion from Zouchi
+  library(dplyr)
+  
   eigs <- pca_obj$sdev^2
   Proportion = eigs/sum(eigs)
   
@@ -44,6 +48,8 @@ get_PCA_reduced_data <- function(labels, pca_obj, searched_accum_var){
 
 
 get_reconstructed_pca <- function(dataset){
+  library(dplyr)
+  
   # get reconstruction of pca
   restr <- dataset$x %*% t(dataset$rotation)
   # unscale and uncenter the data

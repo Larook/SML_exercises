@@ -44,3 +44,127 @@ evaluate_nn <- function(network, test_data) {
   cf <- confusionMatrix(responselist[,1], test_data[,1])
   return( sum(diag(cf))/sum(cf) )
 }
+
+
+
+
+
+
+
+generate_cross_validation_mlp <- function(data, nn_sizes_check, csv_name){
+  # Return the dataframe with information from MLP
+  library(dplyr)
+  library(gmodels)
+  library(class)
+  library(caret)
+  library(swirl)
+  library(ggplot2)
+  library(spatstat)
+
+  library(rpart)
+  library(rpart.plot)
+  library(stats)
+  library(randomForest)
+  library(caret)
+  library(kernlab)
+  library(RSNNS)
+  library(neuralnet)
+  
+  
+  
+  cv.error <- NULL
+  k <- 10
+  library(plyr) 
+  pbar <- create_progress_bar('text')
+  pbar$init(k)
+  
+  # numbers of neurons of hidden layers to check
+  # nn_sizes_check <- list( c(1), c(1,1), c(1,1,1))
+  
+  # dataframe saving information about all the trained and evaluated models with CV
+  df_mlp_full_information <- data.frame()
+  
+  # specify the used dataset
+  # data <- id_use
+  
+  for (nn_size in nn_sizes_check){
+    
+    # get the correct architecture of network
+    layer_1 <- nn_size[1]
+    layer_2 <- nn_size[2]
+    layer_3 <- nn_size[3]
+    # print(nn_size)
+    layers_now <- c(layer_1, layer_2, layer_3)[!is.na(c(layer_1, layer_2, layer_3))]
+    
+    if (is.na(layer_1)){
+      layer_1 = 0
+    }
+    if (is.na(layer_2)){
+      layer_2 = 0
+    }
+    if (is.na(layer_3)){
+      layer_3 = 0
+    }
+    # print(layer_1)
+    # print(layer_2)
+    # print(layer_3)
+    
+    print(paste("layers_now", layers_now))
+    
+    # do the cross validation
+    folds <- createFolds(data[,1], k = 10)
+    # save this information
+    nn_size_l1 <- c()
+    nn_size_l2 <- c()
+    nn_size_l3 <- c()
+    accuracy_test_list <- c()
+    accuracy_training_list <- c()
+    time_training_list <- c()
+    time_eval_list <- c()
+    
+    for(i in 1:10){
+      
+      # CV splitting from Zouchi knn
+      train.cv <- data[-folds[[i]], ]
+      test.cv <- data[folds[[i]], ]
+      
+      # train the MLP and save the time
+      start_time <- Sys.time()
+      training_class <- get_training_class(training_data = train.cv)
+      nn <- train_mlp(training_data=train.cv, training_classes=training_class, size=layers_now)
+      time_training_list[i] <- difftime(Sys.time(), start_time, units = "secs")
+      
+      # evaluate MLP and save the time and accuracy
+      start_time <- Sys.time()
+      accuracy_test_list[i] <- evaluate_nn(nn, test.cv)
+      time_eval_list[i] <- difftime(Sys.time(), start_time, units = "secs")
+      accuracy_training_list[i] <- evaluate_nn(nn, train.cv)
+      
+      # save the current architecture
+      nn_size_l1[i] <- layer_1
+      nn_size_l2[i] <- layer_2
+      nn_size_l3[i] <- layer_3
+      
+      pbar$step()
+    }
+    
+    # save results to DF of 1 mlp configuration
+    df_mlp_this_architecture <-data.frame(list(
+      'nn_size_l1' = nn_size_l1, 
+      'nn_size_l2' = nn_size_l2, 
+      'nn_size_l3' = nn_size_l3, 
+      'accuraccy_test' = accuracy_test_list, 
+      'accuracy_training' = accuracy_training_list,
+      'time_training' = time_training_list,
+      'time_eval' = time_eval_list
+    ))
+    
+    # add current architecture information to full df
+    df_mlp_full_information <- rbind(df_mlp_full_information, df_mlp_this_architecture)
+    
+  }
+  
+  write.csv(df_mlp_full_information, paste("nn_results/df_mlp_full_information_", csv_name, ".csv"), row.names = FALSE)
+  
+  return(df_mlp_full_information)
+}
