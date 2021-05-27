@@ -3,7 +3,7 @@ load_data_id <- function(load_full){
   load("data/idList-FinalExam.Rdata") 
   
   if(load_full) {
-    id <- do.call(rbind, idList[1:38]) # all the people
+    id <- do.call(rbind, idList[1:12]) # all the people is 38
   } else {
     id <- do.call(rbind, idList[1:4]) # 4 persons
   }

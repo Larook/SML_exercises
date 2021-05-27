@@ -51,7 +51,7 @@ evaluate_nn <- function(network, test_data) {
 
 
 
-generate_cross_validation_mlp <- function(data, nn_sizes_check, csv_name){
+generate_cross_validation_mlp <- function(data, nn_sizes_check, csv_name, do_all_in){
   # Return the dataframe with information from MLP
   library(dplyr)
   library(gmodels)
@@ -70,6 +70,13 @@ generate_cross_validation_mlp <- function(data, nn_sizes_check, csv_name){
   library(RSNNS)
   library(neuralnet)
   
+  if (do_all_in == TRUE){
+    csv_name <- paste(csv_name,"_allin")
+  }
+  else {
+    csv_name <- paste(csv_name,"_disjunct")
+  }
+  
   
   
   cv.error <- NULL
@@ -78,14 +85,8 @@ generate_cross_validation_mlp <- function(data, nn_sizes_check, csv_name){
   pbar <- create_progress_bar('text')
   pbar$init(k)
   
-  # numbers of neurons of hidden layers to check
-  # nn_sizes_check <- list( c(1), c(1,1), c(1,1,1))
-  
   # dataframe saving information about all the trained and evaluated models with CV
   df_mlp_full_information <- data.frame()
-  
-  # specify the used dataset
-  # data <- id_use
   
   for (nn_size in nn_sizes_check){
     
@@ -112,7 +113,15 @@ generate_cross_validation_mlp <- function(data, nn_sizes_check, csv_name){
     print(paste("layers_now", layers_now))
     
     # do the cross validation
-    folds <- createFolds(data[,1], k = 10)
+    if (do_all_in == TRUE){
+      # ALL IN - shuffle the dataset  
+      data_shuffled <- data[sample(nrow(data)),]
+      folds <- createFolds(data_shuffled[,1], k = 10)
+    }
+    # DISJUNCT - dont shuffle the data yet
+    else {
+      folds <- createFolds(data[,1], k = 10)
+    }
     # save this information
     nn_size_l1 <- c()
     nn_size_l2 <- c()
@@ -125,8 +134,20 @@ generate_cross_validation_mlp <- function(data, nn_sizes_check, csv_name){
     for(i in 1:10){
       
       # CV splitting from Zouchi knn
-      train.cv <- data[-folds[[i]], ]
-      test.cv <- data[folds[[i]], ]
+      if (do_all_in == TRUE){
+        # folds have already shuffeled data
+        train.cv <- data_shuffled[-folds[[i]], ]
+        test.cv <- data_shuffled[folds[[i]], ]
+      }
+      else {
+        # DISJUNCT - shuffle separately
+        train.cv <- data[-folds[[i]], ]
+        train.cv <- train.cv[sample(nrow(train.cv)),]
+        
+        # SHUFFLE TEST DATASET
+        test.cv <- data[folds[[i]], ]
+        test.cv <- test.cv[sample(nrow(test.cv)),]
+      }
       
       # train the MLP and save the time
       start_time <- Sys.time()
@@ -161,10 +182,10 @@ generate_cross_validation_mlp <- function(data, nn_sizes_check, csv_name){
     
     # add current architecture information to full df
     df_mlp_full_information <- rbind(df_mlp_full_information, df_mlp_this_architecture)
+    write.csv(df_mlp_full_information, paste("nn_results/df_mlp_full_information_", csv_name, ".csv"), row.names = FALSE)
     
   }
   
-  write.csv(df_mlp_full_information, paste("nn_results/df_mlp_full_information_", csv_name, ".csv"), row.names = FALSE)
   
   return(df_mlp_full_information)
 }
