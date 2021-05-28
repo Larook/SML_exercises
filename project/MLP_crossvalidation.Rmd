@@ -129,8 +129,26 @@ source("NN_functions/mlp_functions.R")
 
 nn_sizes_check <- list(c(80,40,20), c(60, 40, 20), c(50, 30, 14))
 data_mlp_cv <- generate_cross_validation_mlp(data=id_use, nn_sizes_check=nn_sizes_check, csv_name="3layers", do_all_in=TRUE)
-# data_mlp_cv <- generate_cross_validation_mlp(data=id_use, nn_sizes_check=nn_sizes_check, csv_name="3layers", do_all_in=FALSE)
+data_mlp_cv <- generate_cross_validation_mlp(data=id_use, nn_sizes_check=nn_sizes_check, csv_name="3layers", do_all_in=FALSE)
 ```
+
+
+## TESTING
+```{r cross validation of one model of the network}
+# Now the net. Note that I am splitting the data in this way: 90% train set and 10% test set in a random way for 10 times. I am also initializing a progress bar using the plyr
+#library because I want to keep an eye on the status of the process since the fitting of the neural network may take a while.
+# numbers of neurons of hidden layers to check
+source("NN_functions/mlp_functions.R") 
+
+nn_sizes_check <- list(c(1,1))
+
+data_mlp_cv <- generate_cross_validation_mlp(data=id_use, nn_sizes_check=nn_sizes_check, csv_name="2layers_test", do_all_in=TRUE)
+data_mlp_cv <- generate_cross_validation_mlp(data=id_use, nn_sizes_check=nn_sizes_check, csv_name="2layers_test", do_all_in=FALSE)
+```
+
+
+
+
 
 ```{r}
 # TRY PCA DATA

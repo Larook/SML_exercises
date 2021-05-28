@@ -47,12 +47,19 @@ evaluate_nn <- function(network, test_data) {
 
 
 
+create_folds_disjunct <- function(data, k = 10){
+  # we want to have 10 lists with 2k of labels in each - easy manual work
+  
+  list_ids <- list( 1:2000, 2001:4000, 4001:6000, 6001:8000, 8001:10000, 10001:12000, 12001:14000, 14001:16000, 16001:18000, 18001:20000 )
+  return( list_ids )
+}
 
 
 
 
 generate_cross_validation_mlp <- function(data, nn_sizes_check, csv_name, do_all_in){
   # Return the dataframe with information from MLP
+  # each person has 200 ciphers per digit - resulting in 2000 rows in total, so disjunct should take those 2000 rows
   library(dplyr)
   library(gmodels)
   library(class)
@@ -70,11 +77,16 @@ generate_cross_validation_mlp <- function(data, nn_sizes_check, csv_name, do_all
   library(RSNNS)
   library(neuralnet)
   
+  
+  print(paste("data in dimensions = ", dim(data)))
+  
   if (do_all_in == TRUE){
     csv_name <- paste(csv_name,"_allin")
+    print("data all in cross validation")
   }
   else {
     csv_name <- paste(csv_name,"_disjunct")
+    print("data disjunct cross validation")
   }
   
   
@@ -120,7 +132,7 @@ generate_cross_validation_mlp <- function(data, nn_sizes_check, csv_name, do_all
     }
     # DISJUNCT - dont shuffle the data yet
     else {
-      folds <- createFolds(data[,1], k = 10)
+      folds <- create_folds_disjunct(data, k = 10)
     }
     # save this information
     nn_size_l1 <- c()
@@ -148,6 +160,9 @@ generate_cross_validation_mlp <- function(data, nn_sizes_check, csv_name, do_all
         test.cv <- data[folds[[i]], ]
         test.cv <- test.cv[sample(nrow(test.cv)),]
       }
+      
+      print(paste("test.cv dimensions = ", dim(test.cv)))
+      print(paste("train.cv dimensions = ", dim(train.cv)))
       
       # train the MLP and save the time
       start_time <- Sys.time()
