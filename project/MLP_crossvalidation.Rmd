@@ -115,9 +115,15 @@ source("NN_functions/mlp_functions.R")
 
 # nn_sizes_check <- list(c(1,1), c(2,1), c(2,2))
 
-nn_sizes_check <- list(c(40,20), c(30,20), c(30,14))
-data_mlp_cv <- generate_cross_validation_mlp(data=id_use, nn_sizes_check=nn_sizes_check, csv_name="2layers", do_all_in=TRUE)
-# data_mlp_cv <- generate_cross_validation_mlp(data=id_use, nn_sizes_check=nn_sizes_check, csv_name="2layers", do_all_in=FALSE)
+nn_sizes_check_2 <- list(c(40,20), c(30,20), c(30,14))
+data_mlp_cv <- generate_cross_validation_mlp(data=id_use, nn_sizes_check=nn_sizes_check_2, csv_name="2layers", do_all_in=TRUE)
+data_mlp_cv <- generate_cross_validation_mlp(data=id_use, nn_sizes_check=nn_sizes_check_2, csv_name="2layers", do_all_in=FALSE)
+
+
+nn_sizes_check_3 <- list(c(80,40,20), c(60, 40, 20), c(50, 30, 14))
+data_mlp_cv <- generate_cross_validation_mlp(data=id_use, nn_sizes_check=nn_sizes_check_3, csv_name="3layers", do_all_in=TRUE)
+data_mlp_cv <- generate_cross_validation_mlp(data=id_use, nn_sizes_check=nn_sizes_check_3, csv_name="3layers", do_all_in=FALSE)
+
 ```
 
 ```{r cross validation of one model of the network}
