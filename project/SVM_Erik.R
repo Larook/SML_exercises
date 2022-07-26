@@ -91,10 +91,10 @@ test <- id_test
 
 #classifier_rbf <-ksvm(V1~ ., data = train, kernel = "vanilladot", C = 1)
 #classifier_rbf <-ksvm(V1~., data = train, kernel = "rbfdot", kpar=list(sigma=0.05), C = 1)
-classifier_rbf <-ksvm(V1~ ., data = train_data, kernel = "polydot", C = 5)
-datasetTest <- predict(classifier_rbf,test)
-test_confusion <- confusionMatrix(datasetTest, test$V1)
-
+classifier_rbf <-ksvm(V1~ ., data = id_train, kernel = "polydot", C = 5,  degree=2, scale=0.5)
+datasetTest <- predict(classifier_rbf,id_test)
+test_confusion <- confusionMatrix(datasetTest, id_test$V1)
+paste("confusionMatrix(datasetTest,test$V1) = ", test_confusion$overall[1])
 
 
 

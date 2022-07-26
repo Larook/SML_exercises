@@ -1,0 +1,341 @@
+---
+title: "testing of the R functions"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(gmodels)
+library(class)
+library(caret)
+library(swirl)
+library(ggplot2)
+library(spatstat)
+```
+
+
+```{r test}
+
+source("important_functions/load_data_id.R")
+source("important_functions/get_training_test_data.R")
+
+source("important_functions/get_normalized_data.R")
+source("important_functions/get_gaussian_smoothed_data.R")
+source("important_functions/view_data.R")
+
+source("important_functions/get_k_clustered_cipher_data.R") 
+source("important_functions/get_PCA_reduced_data.R") 
+
+
+#loading data
+id <- load_data_id(load_full=TRUE)
+# get_cipher_image(data=id, row_id=1640)
+
+# normalizing
+id_norm <- get_normalized_data(id)
+# get_cipher_image(data=id_norm, row_id=1640)
+
+# gaussian smoothing
+# id_smooth <- get_gaussian_smoothed_data(dataset=id, smooth_sigma=0.05)
+# get_cipher_image(data=id_smooth, row_id=1640)
+
+
+# PCA
+pca_obj <- get_pca_obj(id_norm)
+id_pca <- get_PCA_reduced_data(labels=id_norm$V1, pca_obj=pca_obj, searched_accum_var=85)
+n_pcs <- ncol(id_pca) - 1  # minus label
+
+id_use <- id_pca
+
+# splitting data disjunct
+data_train_test_disjunct <- get_training_test_data_disjunct(data=id_use)
+train_data_disjunct <- data_train_test_disjunct[[1]]
+test_data_disjunct <- data_train_test_disjunct[[2]]
+
+
+
+# splitting data all persons in
+data_train_test_allin <- get_training_test_data_allin(data=id_use, training_percent=50)
+train_data_allin <- data_train_test_allin[[1]]
+test_data_allin <- data_train_test_allin[[2]]
+```
+
+
+```{r compare}
+
+library(gmodels)
+library(class)
+library(caret)
+library(swirl)
+library(ggplot2)
+library(spatstat)
+
+
+library(rpart)
+library(rpart.plot)
+library(stats)
+library(randomForest)
+library(caret)
+library(kernlab)
+library(RSNNS)
+library(neuralnet)
+
+source("NN_functions/mlp_functions.R") 
+
+
+
+mlp_accuracy_test_list <- c()
+mlp_accuracy_training_list <- c()
+mlp_time_training_list <- c()
+
+svm_accuracy_test_list <- c()
+svm_accuracy_training_list <- c()
+svm_time_training_list <- c()
+
+id_train <- train_data_allin
+id_test <- test_data_allin
+
+# best SVM
+classifier_rbf <-ksvm(V1~ ., data = id_train, kernel = "polydot", C = 0.2,  degree=2, scale=0.5)
+# best MLP
+nn <- train_mlp(training_data=id_train, training_classes=get_training_class(training_data = id_train), size=c(80,40,20))
+```
+
+```{r allin}
+#loading data
+id <- load_data_id(load_full=TRUE)
+# normalizing
+id_norm <- get_normalized_data(id)
+# PCA
+pca_obj <- get_pca_obj(id_norm)
+id_pca <- get_PCA_reduced_data(labels=id_norm$V1, pca_obj=pca_obj, searched_accum_var=85)
+# use pca
+id_use <- id_pca
+
+data_train_test_allin <- get_training_test_data_allin(data=id_use[sample(nrow(id_use)),], training_percent=50)
+train_data_allin <- data_train_test_allin[[1]]
+test_data_allin <- data_train_test_allin[[2]]
+id_train <- train_data_allin
+id_test <- test_data_allin
+
+# best SVM
+classifier_rbf <-ksvm(V1~ ., data = id_train, kernel = "polydot", C = 0.2,  degree=2, scale=0.5)
+# best MLP
+nn <- train_mlp(training_data=id_train, training_classes=get_training_class(training_data = id_train), size=c(80,40,20))
+
+# i <- 1
+for (i in 1:10){
+  set.seed(i*100)
+  
+  
+  
+  
+  # shuffle data
+  id_test <- id_test[sample(nrow(id_test)),]
+  id_train <- id_train[sample(nrow(id_train)),]
+  
+  # Evaluate best SVM model
+  start_time <- Sys.time()
+  svm_time_training_list[i] <- difftime(Sys.time(), start_time, units = "secs")
+
+  datasetTest <- predict(classifier_rbf, id_test)
+  test_confusion <- confusionMatrix(datasetTest, id_test$V1)
+  # svm_test_acc <-sum(diag(test_confusion$table))/sum(test_confusion$table)  # $table for non-pca
+  svm_test_acc <-sum(diag(test_confusion))/sum(test_confusion)
+  print(paste("test_confusion = ", svm_test_acc))
+  svm_accuracy_test_list[i] <- svm_test_acc
+
+  datasetTrain <- predict(classifier_rbf, id_train)
+  train_confusion <- confusionMatrix(datasetTrain, id_train$V1)
+  # svm_train_acc <-sum(diag(train_confusion$table))/sum(train_confusion$table)  # $table for non-pca
+  svm_train_acc <-sum(diag(train_confusion))/sum(train_confusion)
+  print(paste("train_confusion = ", svm_train_acc))
+  svm_accuracy_training_list[i] <- svm_train_acc
+  
+  
+  # Evaluate best MLP model
+  start_time <- Sys.time()
+  mlp_time_training_list[i] <- difftime(Sys.time(), start_time, units = "secs")
+  
+  # evaluate MLP and save the time and accuracy
+  start_time <- Sys.time()
+  mlp_accuracy_test_list[i] <- evaluate_nn(nn, id_test)
+  mlp_accuracy_training_list[i] <- evaluate_nn(nn, id_train)
+}
+
+
+df_comparison <-data.frame(list(
+      'svm_time_training_list' = svm_time_training_list, 
+      'svm_accuracy_test_list' = svm_accuracy_test_list, 
+      'svm_accuracy_training_list' = svm_accuracy_training_list, 
+      'mlp_time_training_list' = mlp_time_training_list, 
+      'mlp_accuracy_test_list' = mlp_accuracy_test_list,
+      'mlp_accuracy_training_list' = mlp_accuracy_training_list
+    ))
+
+write.csv(x=df_comparison, file="svm_mlp_comparison_allin.csv", row.names = FALSE)
+
+
+```
+
+```{r disjunct}
+id_use <- id_pca
+
+mlp_accuracy_test_list <- c()
+mlp_accuracy_training_list <- c()
+mlp_time_training_list <- c()
+
+svm_accuracy_test_list <- c()
+svm_accuracy_training_list <- c()
+svm_time_training_list <- c()
+
+id_train <- train_data_disjunct
+id_test <- test_data_disjunct
+
+classifier_rbf <-ksvm(V1~ ., data = id_train, kernel = "polydot", C = 0.2,  degree=2, scale=0.5)
+
+nn <- train_mlp(training_data=id_train, training_classes=get_training_class(training_data = id_train), size=c(80,40,20))
+
+
+for (i in 1:10){
+  # shuffle data
+  id_test <- id_test[sample(nrow(id_test)),]
+  id_train <- id_train[sample(nrow(id_train)),]
+  
+  # Evaluate best SVM model
+  start_time <- Sys.time()
+  svm_time_training_list[i] <- difftime(Sys.time(), start_time, units = "secs")
+
+  datasetTest <- predict(classifier_rbf, id_test)
+  test_confusion <- confusionMatrix(datasetTest, id_test$V1)
+  # svm_test_acc <-sum(diag(test_confusion$table))/sum(test_confusion$table)  # $table for non-pca
+  svm_test_acc <-sum(diag(test_confusion))/sum(test_confusion)
+  print(paste("test_confusion = ", svm_test_acc))
+  svm_accuracy_test_list[i] <- svm_test_acc
+
+  datasetTrain <- predict(classifier_rbf, id_train)
+  train_confusion <- confusionMatrix(datasetTrain, id_train$V1)
+  # svm_train_acc <-sum(diag(train_confusion$table))/sum(train_confusion$table)  # $table for non-pca
+  svm_train_acc <-sum(diag(train_confusion))/sum(train_confusion)
+  print(paste("train_confusion = ", svm_train_acc))
+  svm_accuracy_training_list[i] <- svm_train_acc
+  
+  
+  # Evaluate best MLP model
+  start_time <- Sys.time()
+  mlp_time_training_list[i] <- difftime(Sys.time(), start_time, units = "secs")
+  
+  # evaluate MLP and save the time and accuracy
+  start_time <- Sys.time()
+  mlp_accuracy_test_list[i] <- evaluate_nn(nn, id_test)
+  mlp_accuracy_training_list[i] <- evaluate_nn(nn, id_train)
+}
+
+
+df_comparison_disjunct <-data.frame(list(
+      'svm_time_training_list' = svm_time_training_list, 
+      'svm_accuracy_test_list' = svm_accuracy_test_list, 
+      'svm_accuracy_training_list' = svm_accuracy_training_list, 
+      'mlp_time_training_list' = mlp_time_training_list, 
+      'mlp_accuracy_test_list' = mlp_accuracy_test_list,
+      'mlp_accuracy_training_list' = mlp_accuracy_training_list
+    ))
+
+write.csv(x=df_comparison_disjunct, file="svm_mlp_comparison_disjunct.csv", row.names = FALSE)
+
+```
+
+
+```{r compare results}
+
+generate_comparison <- function(do_allin){
+    
+    #loading data
+  id <- load_data_id(load_full=TRUE)
+  # normalizing
+  id_norm <- get_normalized_data(id)
+  # PCA
+  pca_obj <- get_pca_obj(id_norm)
+  id_pca <- get_PCA_reduced_data(labels=id_norm$V1, pca_obj=pca_obj, searched_accum_var=85)
+  # use pca
+  id_use <- id_pca
+  
+  if (do_allin == TRUE){
+    allin_disj <- "allin"
+    data_train_test_allin <- get_training_test_data_allin(data=id_use[sample(nrow(id_use)),], training_percent=50)
+    train_data_allin <- data_train_test_allin[[1]]
+    test_data_allin <- data_train_test_allin[[2]]
+    id_train <- train_data_allin
+    id_test <- test_data_allin
+  }
+  else {
+    allin_disj <- "disjunct"
+    # splitting data disjunct
+    data_train_test_disjunct <- get_training_test_data_disjunct(data=id_use)
+    train_data_disjunct <- data_train_test_disjunct[[1]]
+    test_data_disjunct <- data_train_test_disjunct[[2]]
+    id_train <- train_data_disjunct
+    id_test <- test_data_disjunct
+  }
+  
+  # best SVM
+  classifier_rbf <-ksvm(V1~ ., data = id_train, kernel = "polydot", C = 0.2,  degree=2, scale=0.5)
+  # best MLP
+  nn <- train_mlp(training_data=id_train, training_classes=get_training_class(training_data = id_train), size=c(80,40,20))
+  
+  # i <- 1
+  for (i in 1:10){
+    set.seed(i*100)
+    
+    # shuffle data
+    id_test <- id_test[sample(nrow(id_test)),]
+    id_train <- id_train[sample(nrow(id_train)),]
+    
+    # Evaluate best SVM model
+    start_time <- Sys.time()
+    svm_time_training_list[i] <- difftime(Sys.time(), start_time, units = "secs")
+  
+    datasetTest <- predict(classifier_rbf, id_test)
+    test_confusion <- confusionMatrix(datasetTest, id_test$V1)
+    # svm_test_acc <-sum(diag(test_confusion$table))/sum(test_confusion$table)  # $table for non-pca
+    svm_test_acc <-sum(diag(test_confusion))/sum(test_confusion)
+    print(paste("test_confusion = ", svm_test_acc))
+    svm_accuracy_test_list[i] <- svm_test_acc
+  
+    datasetTrain <- predict(classifier_rbf, id_train)
+    train_confusion <- confusionMatrix(datasetTrain, id_train$V1)
+    # svm_train_acc <-sum(diag(train_confusion$table))/sum(train_confusion$table)  # $table for non-pca
+    svm_train_acc <-sum(diag(train_confusion))/sum(train_confusion)
+    print(paste("train_confusion = ", svm_train_acc))
+    svm_accuracy_training_list[i] <- svm_train_acc
+    
+    
+    # Evaluate best MLP model
+    start_time <- Sys.time()
+    mlp_time_training_list[i] <- difftime(Sys.time(), start_time, units = "secs")
+    
+    # evaluate MLP and save the time and accuracy
+    start_time <- Sys.time()
+    mlp_accuracy_test_list[i] <- evaluate_nn(nn, id_test)
+    mlp_accuracy_training_list[i] <- evaluate_nn(nn, id_train)
+  }
+  
+  
+  df_comparison <-data.frame(list(
+        'svm_time_training_list' = svm_time_training_list, 
+        'svm_accuracy_test_list' = svm_accuracy_test_list, 
+        'svm_accuracy_training_list' = svm_accuracy_training_list, 
+        'mlp_time_training_list' = mlp_time_training_list, 
+        'mlp_accuracy_test_list' = mlp_accuracy_test_list,
+        'mlp_accuracy_training_list' = mlp_accuracy_training_list
+      ))
+  
+  
+  name = paste("svm_mlp_comparison", allin_disj, ".csv")
+  write.csv(x=df_comparison, file=name, row.names = FALSE)
+  
+}
+
+generate_comparison(do_allin = TRUE)
+generate_comparison(do_allin = FALSE)
+
+```

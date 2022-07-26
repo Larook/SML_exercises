@@ -8,16 +8,47 @@ get_img_rot <- function(dataset, id_no){
   #rotated <- c(id_mat[-400+id_no*400+1, 2:ncol(id_mat)])
   
   # prints digit from id
+  # rotated <- c(id_mat[id_no, 2:ncol(id_mat)])
   rotated <- c(id_mat[id_no, 2:ncol(id_mat)])
   
   rotated <- ((rotated - min(rotated)) / (max(rotated) - min(rotated)))
-  image <- matrix(rotated,nrow = 18,ncol = 18, byrow = FALSE)
+  image <- matrix(rotated,nrow = 18, ncol = 18, byrow = FALSE)
   image <- rotate(image)
 }
+
+
+get_img_rot_pca <- function(dataset, id_no){
+  # modified code that we got in exercise, put only dataset and id of number
+  id_mat <- data.matrix(dataset, rownames.force = NA)
+  rotate <- function(x) t(apply(x, 2, rev))
+  
+  # wants to print only 0-9 digits
+  #rotated <- c(id_mat[-400+id_no*400+1, 2:ncol(id_mat)])
+  
+  # prints digit from id
+  # rotated <- c(id_mat[id_no, 2:ncol(id_mat)])
+  rotated <- c(id_mat[id_no, 2:ncol(id_mat)])
+  
+  rotated <- ((rotated - min(rotated)) / (max(rotated) - min(rotated)))
+  image <- matrix(rotated,nrow = 18, ncol = 18, byrow = FALSE)
+  image <- rotate(image)
+}
+
+
+
+
+
 
 get_cipher_image <- function(data, row_id){
   return( image(get_img_rot(dataset=data, id_no=row_id), col = gray(0:100/100) ) )
 }
+
+
+
+
+
+
+
 
 # view_data <- function(data){
 # Zouchi's code not working

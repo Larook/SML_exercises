@@ -7,12 +7,13 @@ get_pca_obj <- function(data){
 }
 
 
-show_pca_reconstruction <- function(pca_obj, cipher){
+show_pca_reconstruction <- function(pca_obj, cipher, n_pcs){
   # wanted_pcs <- prcomp(dataset[,(2:ncol(dataset))], center = TRUE,scale. = TRUE, rank. = limit_pca_rank)
   # print(wanted_pcs)
   print(paste0("function returns data with dimensions", dim(pca_obj)))
   
-  restr <- get_reconstructed_pca(pca_obj)
+  restr <- get_reconstructed_pca(pca_obj, n_pcs)
+  print(restr)
   
   #cipher_index <- 3*400 + 3 # get any index of a cipher - ideally show all 10 digits
   # find indexes of digits and print them
@@ -23,7 +24,9 @@ show_pca_reconstruction <- function(pca_obj, cipher){
   #  } 
   #  image(get_img_rot(restr, cipher_index), col = gray(0:100/100) )
   #}
+  
   image(get_img_rot(restr, cipher), col = gray(0:100/100) )
+  
 }
 
 
@@ -47,19 +50,19 @@ get_PCA_reduced_data <- function(labels, pca_obj, searched_accum_var){
 
 
 
-get_reconstructed_pca <- function(dataset){
+get_reconstructed_pca <- function(dataset, n_pcs){
   library(dplyr)
   
   # get reconstruction of pca
-  restr <- dataset$x %*% t(dataset$rotation)
+  restr <- dataset$x[1:n_pcs] %*% t(dataset$rotation[1:n_pcs])
   # unscale and uncenter the data
-  if(dataset$scale != FALSE){
-    restr <- scale(restr, center = FALSE , scale=1/dataset$scale)
+  if(dataset$scale[1:n_pcs] != FALSE){
+    restr <- scale(restr, center = FALSE , scale=1/dataset$scale[1:n_pcs])
   }
-  if(all(dataset$center != FALSE)){
-    restr <- scale(restr, center = -1 * dataset$center, scale=FALSE)
+  if(all(dataset$center[1:n_pcs] != FALSE)){
+    restr <- scale(restr, center = -1 * dataset$center[1:n_pcs], scale=FALSE)
   }
-  restr
+  return(restr)
 }
 
 

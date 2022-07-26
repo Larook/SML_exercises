@@ -1,5 +1,6 @@
 # ignore all RData files that are not input data
 # I mean ignore all ".RData" that comes from  current exercise - sometimes the file is too big to push
-ex*/.RData
-ex*/.Rhistory
-ex*/.RDataTmp
+*.RData
+*.Rhistory
+*.RDataTmp
+*.csv
